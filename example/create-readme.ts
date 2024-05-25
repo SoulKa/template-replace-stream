@@ -22,7 +22,7 @@ function openExampleStream(file: string) {
         endPattern: '"'
       }
   );
-  return fs.createReadStream(file).pipe(replaceStream);
+  return fs.createReadStream(path.join(__dirname, file)).pipe(replaceStream);
 }
 
 // the map of example files and their read streams

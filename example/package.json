@@ -2,9 +2,9 @@
   "name": "example",
   "version": "1.0.0",
   "description": "Example code for the template-replace-stream module",
-  "main": "javascript-example.js",
   "scripts": {
-    "start": "node .",
+    "typescript": "ts-node typescript-example.ts",
+    "javascript": "node javascript-example.js",
     "test": "jest"
   },
   "repository": {
