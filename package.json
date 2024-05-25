@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsup && npm run build:readme",
-    "build:readme": "ts-node example/create-readme.ts",
+    "build:readme": "ts-node examples/create-readme.ts",
     "test": "jest"
   },
   "repository": {
