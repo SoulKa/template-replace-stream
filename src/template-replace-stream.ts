@@ -79,7 +79,7 @@ export class TemplateReplaceStream extends Transform {
     this._startPattern = this.toBuffer(_options.startPattern);
     this._endPattern = this.toBuffer(_options.endPattern);
     this._maxFullPatternLength = this._startPattern.length + _options.maxVariableNameLength + this._endPattern.length;
-    this._resolveVariable = variables instanceof Map ? variables.get : variables;
+    this._resolveVariable = variables instanceof Map ? variables.get.bind(variables) : variables;
   }
 
   _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
