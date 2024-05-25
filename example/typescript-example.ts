@@ -2,7 +2,7 @@ import {TemplateReplaceStream} from "../src";
 import fs from "node:fs";
 import path from "node:path";
 
-// create a map of variables to replace in the template
+// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
 const variables = new Map([["replace-me", "really fast"]]);
 
 // create the streams
