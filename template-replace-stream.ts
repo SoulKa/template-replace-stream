@@ -1,4 +1,4 @@
-import { Transform, TransformCallback, TransformOptions, Writable } from 'node:stream';
+import {Transform, TransformCallback, TransformOptions, Writable} from 'node:stream';
 
 /**
  * Options for the template replace stream.
@@ -11,9 +11,9 @@ export type TemplateReplaceStreamOptions = {
   /** Default: `100`. The maximum length of a variable name including whitespaces around it */
   maxVariableNameLength: number;
   /** Default: `'${{'`.The start pattern of a variable either as string or buffer */
-  startPattern: string|Buffer;
+  startPattern: string | Buffer;
   /** Default: `'}}'`. The end pattern of a variable either as string or buffer */
-  endPattern: string|Buffer;
+  endPattern: string | Buffer;
   /** The options for the lower level {@link Transform} stream. Do not replace transform or flush */
   streamOptions?: TransformOptions;
 }
@@ -25,7 +25,7 @@ export type TemplateReplaceStreamOptions = {
 export type VariableValue = string | Buffer;
 
 /** A function that resolves a variable name to its value */
-export type VariableResolverFunction = (variable: string) => VariableValue|undefined;
+export type VariableResolverFunction = (variable: string) => VariableValue | undefined;
 
 /** A map or function that resolves variable names to their values */
 export type VariableResolver = Map<string, VariableValue> | VariableResolverFunction;
@@ -64,7 +64,7 @@ export class TemplateReplaceStream extends Transform {
    * @param options The options for the stream
    */
   constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
-    const _options = { ...DEFAULT_OPTIONS, ...options };
+    const _options = {...DEFAULT_OPTIONS, ...options};
     if (_options.maxVariableNameLength <= 0) {
       throw new Error('The maximum variable name length must be greater than 0');
     } else if (_options.startPattern.length === 0) {
@@ -82,7 +82,9 @@ export class TemplateReplaceStream extends Transform {
     this._resolveVariable = variables instanceof Map ? variables.get : variables;
   }
 
-  _transform(chunk: Buffer | string, encoding: BufferEncoding, callback: TransformCallback) {
+  _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
+    if (typeof chunk === 'string') chunk = Buffer.from(chunk, encoding);
+
     if (chunk instanceof Buffer) {
 
       // if there is text left from last iteration, prepend it to the chunk
@@ -101,6 +103,11 @@ export class TemplateReplaceStream extends Transform {
         }
       }
     } else {
+      if (this._options.throwOnMissingVariable) {
+        throw new Error('Cannot replace variables in non-string-link streams');
+      } else if (this._options.log) {
+        console.warn('Received non-buffer chunk. Will not modify it.');
+      }
       this.push(chunk);
     }
 
