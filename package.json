@@ -2,10 +2,12 @@
   "name": "template-replace-stream",
   "version": "1.0.0",
   "description": "A high performance template replace stream working on binary or string streams",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "main": "index.js",
+  "module": "index.mjs",
+  "types": "index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "jest"

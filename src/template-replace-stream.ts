@@ -1,4 +1,4 @@
-import {Transform, TransformCallback, TransformOptions, Writable} from 'node:stream';
+import {Readable, Transform, TransformCallback, TransformOptions} from 'node:stream';
 
 /**
  * Options for the template replace stream.
@@ -18,17 +18,13 @@ export type TemplateReplaceStreamOptions = {
   streamOptions?: TransformOptions;
 }
 
-/**
- * A resolved value of a variable. This is what will be written into the connected {@link Writable}
- * when a template variable is resolved
- */
-export type VariableValue = string | Buffer;
+declare type StringSource = string | Buffer | Readable;
 
 /** A function that resolves a variable name to its value */
-export type VariableResolverFunction = (variable: string) => VariableValue | undefined;
+export type VariableResolverFunction = (variable: string) => StringSource | undefined;
 
 /** A map or function that resolves variable names to their values */
-export type VariableResolver = Map<string, VariableValue> | VariableResolverFunction;
+export type VariableResolver = Map<string, StringSource> | VariableResolverFunction;
 
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   log: false,
@@ -47,6 +43,7 @@ export class TemplateReplaceStream extends Transform {
   private _stack = Buffer.alloc(0);
   private _isMatching = false;
   private _matchCount = 0;
+  private _variableName?: Buffer;
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
@@ -82,7 +79,7 @@ export class TemplateReplaceStream extends Transform {
     this._resolveVariable = variables instanceof Map ? variables.get.bind(variables) : variables;
   }
 
-  _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
+  async _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
     if (typeof chunk === 'string') chunk = Buffer.from(chunk, encoding);
 
     if (chunk instanceof Buffer) {
@@ -100,6 +97,17 @@ export class TemplateReplaceStream extends Transform {
           if (!this.findStartOfVariable()) break;
         } else if (!this.findEndOfVariable()) {
           break;
+        } else if (this._variableName !== undefined) {
+          const value = this.getValueOfVariable(this._variableName);
+          const index = this._startPattern.length + this._variableName.length + this._endPattern.length;
+          if (value) {
+            await this.writeToOutput(value); // replace the template string with the value
+            this._stack = this._stack.subarray(index); // discard the template string
+          } else {
+            this.releaseStack(index); // write the original template string
+          }
+          this._variableName = undefined;
+          this.changeState();
         }
       }
     } else {
@@ -115,9 +123,7 @@ export class TemplateReplaceStream extends Transform {
   }
 
   _flush(callback: TransformCallback) {
-    if (this._stack.length > 0) {
-      this.push(this._stack);
-    }
+    if (this._stack.length > 0) this.push(this._stack);
     callback();
   }
 
@@ -139,9 +145,10 @@ export class TemplateReplaceStream extends Transform {
   }
 
   /**
-   * Finds the end of a variable in the stack.
+   * Finds the end of a variable in the stack and
    *
-   * @returns True if the end of a variable was found, false otherwise.
+   * @returns True if the end of a variable was found, false otherwise. Note that there can still be
+   * a match when continuing the search with the next chunk.
    */
   private findEndOfVariable() {
     const index = this.findIndex(this._endPattern, this._startPattern.length, this._maxFullPatternLength - this._startPattern.length);
@@ -151,16 +158,8 @@ export class TemplateReplaceStream extends Transform {
         this.changeState();
       }
       return false;
-    } else if (index !== -1) {
-      const variableBuffer = this._stack.subarray(this._startPattern.length, index);
-      const value = this.getValueOfVariable(variableBuffer);
-      if (value) {
-        this.push(value);
-        this._stack = this._stack.subarray(index + this._endPattern.length);
-      } else {
-        this.releaseStack(index + this._endPattern.length);
-      }
-      this.changeState();
+    } else {
+      this._variableName = this._stack.subarray(this._startPattern.length, index);
       return true;
     }
   }
@@ -228,8 +227,22 @@ export class TemplateReplaceStream extends Transform {
         console.debug(`Unmatched variable "${variableName}"`);
       }
     } else {
-      if (this._options.log) console.debug(`Replacing variable "${variableName}" with "${value}"`);
-      return this.toBuffer(value);
+      if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
+      return value;
+    }
+  }
+
+  /**
+   * Writes the given string source to the output stream. If the source is a readable stream, it is
+   * piped to the output stream. Otherwise, the source is written directly to the output stream.
+   *
+   * @param stringSource The source to write to the output stream
+   */
+  private async writeToOutput(stringSource: StringSource) {
+    if (stringSource instanceof Readable) {
+      for await (const chunk of stringSource) this.push(chunk);
+    } else {
+      this.push(this.toBuffer(stringSource));
     }
   }
 

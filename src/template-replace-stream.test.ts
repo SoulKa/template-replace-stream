@@ -8,7 +8,7 @@ class FixedChunkSizeReadStream extends Readable {
   private readonly _buffer: Buffer;
   private _current: number;
 
-  constructor(data: Buffer | string, chunkSize: number, encoding: BufferEncoding = 'utf8') {
+  constructor(data: Buffer | string, chunkSize = 1, encoding: BufferEncoding = 'utf8') {
     super();
     this._buffer = Buffer.isBuffer(data) ? data : Buffer.from(data, encoding);
     this._chunkSize = chunkSize;
@@ -36,7 +36,7 @@ describe('FixedChunkSizeReadStream', () => {
     const expectedChunks = sourceString.split('');
     const chunks = [] as string[];
     const buffer = Buffer.from(sourceString);
-    const stream: Readable = new FixedChunkSizeReadStream(buffer, 1);
+    const stream: Readable = new FixedChunkSizeReadStream(buffer);
 
     stream.on('data', (chunk) => chunks.push(chunk.toString()));
     await new Promise((resolve) => stream.on('end', resolve));
@@ -50,7 +50,7 @@ describe('TemplateReplacerStream', () => {
     // Arrange
     const templateString = 'Hello, {{ name }}!';
     const variableMap = new Map([['name', 'World']]);
-    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const readable: Readable = new FixedChunkSizeReadStream(templateString);
     const transformStream = new TemplateReplaceStream(variableMap);
 
     // Act
@@ -63,7 +63,7 @@ describe('TemplateReplacerStream', () => {
   it('should not modify the stream if there are no template variables', async () => {
     // Arrange
     const templateString = 'Hello, World!';
-    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const readable: Readable = new FixedChunkSizeReadStream(templateString);
     const transformStream = new TemplateReplaceStream(new Map());
 
     // Act
@@ -76,7 +76,7 @@ describe('TemplateReplacerStream', () => {
   it('should not modify the string if the template variables are unresolved', async () => {
     // Arrange
     const templateString = 'Hello, {{ name }}!';
-    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const readable: Readable = new FixedChunkSizeReadStream(templateString);
     const transformStream = new TemplateReplaceStream(new Map());
 
     // Act
@@ -84,5 +84,20 @@ describe('TemplateReplacerStream', () => {
 
     // Assert
     expect(result).toBe(templateString);
+  });
+
+  it('should replace variables in a stream using another string as replace value source', async () => {
+    // Arrange
+    const templateString = 'Hello, {{ name }}!';
+    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe').pause();
+    const variableMap = new Map([['name', replaceValueSourceStream]]);
+    const transformStream = new TemplateReplaceStream(variableMap);
+    const templateStream = new FixedChunkSizeReadStream(templateString);
+
+    // Act
+    const result = await streamToString(templateStream.pipe(transformStream));
+
+    // Assert
+    expect(result).toBe('Hello, Universe!');
   });
 });
