@@ -18,6 +18,8 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
+    "@types/sloc": "^0.2.3",
+    "sloc": "^0.3.2",
     "ts-node": "^10.9.2"
   }
 }

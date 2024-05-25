@@ -1,9 +1,12 @@
-import {TemplateReplaceStream} from "../src";
+import {StringSource, TemplateReplaceStream} from "../src";
 import fs from "fs";
 import path from "path";
+import sloc from "sloc"
 
-const dir = path.join(__dirname, "..");
+const rootDir = path.join(__dirname, "..");
 const exampleFiles = ["javascript-example.js", "typescript-example.ts", "create-readme.ts"];
+
+const loc = sloc(fs.readFileSync(path.join(rootDir, "src", "template-replace-stream.ts"), "utf8"), "ts").total;
 
 /**
  * Opens a file stream and replaces the import paths in the examples. This is used to
@@ -25,13 +28,14 @@ function openExampleStream(file: string) {
   return fs.createReadStream(path.join(__dirname, file)).pipe(replaceStream);
 }
 
-// the map of example files and their read streams
-const codeExamples = new Map(exampleFiles.map((file) => [file, openExampleStream(file)]));
+// the map of example files and their read streams and further template variables
+const templateMap = new Map<string, StringSource>(exampleFiles.map((file) => [file, openExampleStream(file)]));
+templateMap.set("loc", loc.toString());
 
 // create the streams
-const readmeReadStream = fs.createReadStream(path.join(dir, "README.template.md"));
-const readmeWriteStream = fs.createWriteStream(path.join(dir, "README.md"));
+const readmeReadStream = fs.createReadStream(path.join(rootDir, "README.template.md"));
+const readmeWriteStream = fs.createWriteStream(path.join(rootDir, "README.md"));
 
 // connect the streams and put the template replace stream in the middle
-readmeReadStream.pipe(new TemplateReplaceStream(codeExamples)).pipe(readmeWriteStream);
+readmeReadStream.pipe(new TemplateReplaceStream(templateMap)).pipe(readmeWriteStream);
 readmeWriteStream.on("finish", () => console.log("Finished writing README.md"));

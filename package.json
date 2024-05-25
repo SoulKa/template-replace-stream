@@ -9,7 +9,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && ts-node example/create-readme.ts",
+    "build": "tsup && npm run build:readme",
+    "build:readme": "ts-node example/create-readme.ts",
     "test": "jest"
   },
   "repository": {
