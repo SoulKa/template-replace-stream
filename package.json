@@ -1,0 +1,42 @@
+{
+  "name": "template-replace-stream",
+  "version": "1.0.0",
+  "description": "A high performance template replace stream working on binary or string streams",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoulKa/template-replace-stream.git"
+  },
+  "keywords": [
+    "transform",
+    "stream",
+    "key",
+    "value",
+    "binary",
+    "readstream",
+    "readable",
+    "variable",
+    "map",
+    "performance",
+    "simple"
+  ],
+  "author": "Louis Wilke",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SoulKa/template-replace-stream/issues"
+  },
+  "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.3",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.5"
+  }
+}
