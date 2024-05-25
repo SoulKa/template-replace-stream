@@ -1,0 +1,23 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "Example code for the template-replace-stream module",
+  "main": "javascript-example.js",
+  "scripts": {
+    "start": "node .",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoulKa/template-replace-stream.git"
+  },
+  "author": "Louis Wilke",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SoulKa/template-replace-stream/issues"
+  },
+  "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
+  "devDependencies": {
+    "ts-node": "^10.9.2"
+  }
+}

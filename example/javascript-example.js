@@ -1,14 +1,3 @@
-# template-replace-stream
-
-A high performance `{{ template }}` replace stream working on binary or string streams.
-
-## Install
-
-`npm install template-replace-stream`
-
-## Usage
-
-```js
 const {TemplateReplaceStream} = require("../dist");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -24,4 +13,3 @@ const templateReplaceStream = new TemplateReplaceStream(variables);
 // connect the streams and put the template replace stream in the middle
 readStream.pipe(templateReplaceStream).pipe(writeStream);
 writeStream.on("finish", () => console.log("Finished writing example.txt"));
-```
