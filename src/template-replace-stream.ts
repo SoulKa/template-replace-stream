@@ -18,7 +18,7 @@ export type TemplateReplaceStreamOptions = {
   streamOptions?: TransformOptions;
 }
 
-declare type StringSource = string | Buffer | Readable;
+export type StringSource = string | Buffer | Readable;
 
 /** A function that resolves a variable name to its value */
 export type VariableResolverFunction = (variable: string) => StringSource | undefined;

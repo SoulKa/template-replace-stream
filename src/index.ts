@@ -1,3 +1,15 @@
-import {TemplateReplaceStream} from "./template-replace-stream";
+import {
+  StringSource,
+  TemplateReplaceStream,
+  TemplateReplaceStreamOptions,
+  VariableResolver,
+  VariableResolverFunction
+} from "./template-replace-stream";
 
-export {TemplateReplaceStream};
+export {
+  TemplateReplaceStream,
+  VariableResolver,
+  VariableResolverFunction,
+  TemplateReplaceStreamOptions,
+  StringSource
+};
