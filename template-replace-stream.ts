@@ -1,30 +1,85 @@
-import { Transform, TransformCallback } from 'node:stream';
-
-const START_PATTERN = '${{'.split('').map(char => char.charCodeAt(0));
-const END_PATTERN = '}}'.split('').map(char => char.charCodeAt(0));
-const MAX_VARIABLE_NAME_LENGTH = 100;
-const MAX_FULL_PATTERN_LENGTH = START_PATTERN.length + MAX_VARIABLE_NAME_LENGTH + END_PATTERN.length;
+import { Transform, TransformCallback, TransformOptions, Writable } from 'node:stream';
 
 /**
- * A stream that replaces template variables in a stream with values from a map.
- * It only works with buffers and does not support string encoding.
+ * Options for the template replace stream.
+ */
+export type TemplateReplaceStreamOptions = {
+  /** Default: `false`. If true, the stream creates logs on debug level */
+  log: boolean;
+  /** Default: `false`. If true, the stream throws an error when a variable is missing */
+  throwOnMissingVariable: boolean;
+  /** Default: `100`. The maximum length of a variable name including whitespaces around it */
+  maxVariableNameLength: number;
+  /** Default: `'${{'`.The start pattern of a variable either as string or buffer */
+  startPattern: string|Buffer;
+  /** Default: `'}}'`. The end pattern of a variable either as string or buffer */
+  endPattern: string|Buffer;
+  /** The options for the lower level {@link Transform} stream. Do not replace transform or flush */
+  streamOptions?: TransformOptions;
+}
+
+/**
+ * A resolved value of a variable. This is what will be written into the connected {@link Writable}
+ * when a template variable is resolved
+ */
+export type VariableValue = string | Buffer;
+
+/** A function that resolves a variable name to its value */
+export type VariableResolverFunction = (variable: string) => VariableValue|undefined;
+
+/** A map or function that resolves variable names to their values */
+export type VariableResolver = Map<string, VariableValue> | VariableResolverFunction;
+
+const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
+  log: false,
+  throwOnMissingVariable: false,
+  maxVariableNameLength: 100,
+  startPattern: Buffer.from('${{', 'ascii'),
+  endPattern: Buffer.from('}}', 'ascii'),
+  streamOptions: undefined
+}
+
+/**
+ * A stream that replaces template variables in a stream with values from a map or resolver function.
  */
 export class TemplateReplaceStream extends Transform {
 
   private _stack = Buffer.alloc(0);
   private _isMatching = false;
   private _matchCount = 0;
-  private readonly _variables: Map<string, string>;
+
+  private readonly _startPattern: Buffer;
+  private readonly _endPattern: Buffer;
+  private readonly _maxFullPatternLength: number;
+  private readonly _resolveVariable: VariableResolverFunction;
+  private readonly _options: TemplateReplaceStreamOptions;
 
   /**
-   * Creates a new instance of the template replacer stream.
+   * Creates a new instance of the {@link TemplateReplaceStream}.
    *
-   * @param variables The map of variables to replace. The keys are the variable
-   * names and the values are the replacements.
+   * @param variables The {@link VariableResolver} to resolve variables. If provided as a map, the
+   * keys are the variable names and the values are the replacements (without surrounding whitespaces).
+   * If provided as a function, the function is called with the variable name and should return the
+   * replacement value.
+   * @param options The options for the stream
    */
-  constructor(variables: Map<string, string>) {
-    super({});
-    this._variables = variables;
+  constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
+    const _options = { ...DEFAULT_OPTIONS, ...options };
+    if (_options.maxVariableNameLength <= 0) {
+      throw new Error('The maximum variable name length must be greater than 0');
+    } else if (_options.startPattern.length === 0) {
+      throw new Error('The start pattern must not be empty');
+    } else if (_options.endPattern.length === 0) {
+      throw new Error('The end pattern must not be empty');
+    }
+
+    super(_options.streamOptions);
+
+    this._options = _options;
+    this._startPattern = this.toBuffer(_options.startPattern);
+    this._endPattern = this.toBuffer(_options.endPattern);
+    this._maxFullPatternLength = this._startPattern.length + _options.maxVariableNameLength + this._endPattern.length;
+    this._resolveVariable = variables instanceof Map ? variables.get : variables;
   }
 
   _transform(chunk: Buffer | string, encoding: BufferEncoding, callback: TransformCallback) {
@@ -65,7 +120,7 @@ export class TemplateReplaceStream extends Transform {
    * @returns True if the start of a variable was found, false otherwise.
    */
   private findStartOfVariable() {
-    const index = this.findIndex(START_PATTERN);
+    const index = this.findIndex(this._startPattern);
     if (index === -1) {
       this.releaseStack(this._stack.length - this._matchCount);
       return false;
@@ -82,21 +137,21 @@ export class TemplateReplaceStream extends Transform {
    * @returns True if the end of a variable was found, false otherwise.
    */
   private findEndOfVariable() {
-    const index = this.findIndex(END_PATTERN, START_PATTERN.length, MAX_FULL_PATTERN_LENGTH - START_PATTERN.length);
+    const index = this.findIndex(this._endPattern, this._startPattern.length, this._maxFullPatternLength - this._startPattern.length);
     if (index === -1) {
-      if (this._stack.length >= MAX_FULL_PATTERN_LENGTH) {
-        this.releaseStack(MAX_FULL_PATTERN_LENGTH);
+      if (this._stack.length >= this._maxFullPatternLength) {
+        this.releaseStack(this._maxFullPatternLength);
         this.changeState();
       }
       return false;
     } else if (index !== -1) {
-      const variableBuffer = this._stack.subarray(START_PATTERN.length, index);
+      const variableBuffer = this._stack.subarray(this._startPattern.length, index);
       const value = this.getValueOfVariable(variableBuffer);
       if (value) {
         this.push(value);
-        this._stack = this._stack.subarray(index + END_PATTERN.length);
+        this._stack = this._stack.subarray(index + this._endPattern.length);
       } else {
-        this.releaseStack(index + END_PATTERN.length);
+        this.releaseStack(index + this._endPattern.length);
       }
       this.changeState();
       return true;
@@ -128,7 +183,7 @@ export class TemplateReplaceStream extends Transform {
    * @param offset The offset to start searching in the buffer
    * @param maxLength The maximum length to search in the buffer
    */
-  private findIndex(pattern: number[], offset = 0, maxLength = 0) {
+  private findIndex(pattern: Buffer, offset = 0, maxLength = 0) {
     const maxIndex = maxLength > 0 ? Math.min(this._stack.length, offset + this._matchCount + maxLength) : this._stack.length;
     for (let index = offset + this._matchCount; index < maxIndex; index++) {
       if (this._stack[index] === pattern[this._matchCount]) {
@@ -158,12 +213,20 @@ export class TemplateReplaceStream extends Transform {
    */
   private getValueOfVariable(variableBuffer: Buffer) {
     const variableName = variableBuffer.toString().trim();
-    const value = this._variables.get(variableName);
+    const value = this._resolveVariable(variableName);
     if (value === undefined) {
-      console.debug(`Unmatched variable "${variableName}"`);
+      if (this._options.throwOnMissingVariable) {
+        throw new Error(`Variable "${variableName}" not found in the variable map`);
+      } else if (this._options.log) {
+        console.debug(`Unmatched variable "${variableName}"`);
+      }
     } else {
-      console.debug(`Replacing variable "${variableName}" with "${value}"`);
-      return Buffer.from(value);
+      if (this._options.log) console.debug(`Replacing variable "${variableName}" with "${value}"`);
+      return this.toBuffer(value);
     }
+  }
+
+  private toBuffer(stringLike: string | Buffer) {
+    return stringLike instanceof Buffer ? stringLike : Buffer.from(stringLike);
   }
 }

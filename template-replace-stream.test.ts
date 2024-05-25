@@ -73,7 +73,7 @@ describe('TemplateReplacerStream', () => {
     expect(result).toBe(templateString);
   });
 
-  it('should not modify the string if the template variables are not in the map', async () => {
+  it('should not modify the string if the template variables are unresolved', async () => {
     // Arrange
     const templateString = 'Hello, ${{ name }}!';
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
