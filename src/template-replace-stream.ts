@@ -10,7 +10,7 @@ export type TemplateReplaceStreamOptions = {
   throwOnMissingVariable: boolean;
   /** Default: `100`. The maximum length of a variable name including whitespaces around it */
   maxVariableNameLength: number;
-  /** Default: `'${{'`.The start pattern of a variable either as string or buffer */
+  /** Default: `'{{'`.The start pattern of a variable either as string or buffer */
   startPattern: string | Buffer;
   /** Default: `'}}'`. The end pattern of a variable either as string or buffer */
   endPattern: string | Buffer;
@@ -34,7 +34,7 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   log: false,
   throwOnMissingVariable: false,
   maxVariableNameLength: 100,
-  startPattern: Buffer.from('${{', 'ascii'),
+  startPattern: Buffer.from('{{', 'ascii'),
   endPattern: Buffer.from('}}', 'ascii'),
   streamOptions: undefined
 }

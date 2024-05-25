@@ -48,7 +48,7 @@ describe('FixedChunkSizeReadStream', () => {
 describe('TemplateReplacerStream', () => {
   it('should replace variables in a stream', async () => {
     // Arrange
-    const templateString = 'Hello, ${{ name }}!';
+    const templateString = 'Hello, {{ name }}!';
     const variableMap = new Map([['name', 'World']]);
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(variableMap);
@@ -75,7 +75,7 @@ describe('TemplateReplacerStream', () => {
 
   it('should not modify the string if the template variables are unresolved', async () => {
     // Arrange
-    const templateString = 'Hello, ${{ name }}!';
+    const templateString = 'Hello, {{ name }}!';
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(new Map());
 
