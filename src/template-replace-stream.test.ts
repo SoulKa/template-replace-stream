@@ -45,7 +45,7 @@ describe('FixedChunkSizeReadStream', () => {
   });
 });
 
-describe('TemplateReplacerStream', () => {
+describe('TemplateReplaceStream', () => {
   it('should replace variables in a stream', async () => {
     // Arrange
     const templateString = 'Hello, {{ name }}!';
