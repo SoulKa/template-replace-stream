@@ -22,27 +22,42 @@ export class FixedChunkSizeReadStream extends Readable {
   }
 }
 
+export type BufferGenerator = (chunkIndex: number) => Buffer;
+
 export class FixedLengthReadStream extends Readable {
 
-  private readonly _chunk: Buffer;
+  private readonly _chunkSource: Buffer | BufferGenerator;
   private _byteLength: number;
+  private _chunkIndex = 0;
 
-  constructor(chunk: Buffer | string, byteLength: number, encoding: BufferEncoding = 'utf8') {
+  constructor(chunkSource: Buffer | string | BufferGenerator, byteLength: number, encoding: BufferEncoding = 'utf8') {
     super();
-    this._chunk = chunk instanceof Buffer ? chunk : Buffer.from(chunk, encoding);
+    if (typeof chunkSource === 'function' || chunkSource instanceof Buffer) {
+      this._chunkSource = chunkSource;
+    } else {
+      this._chunkSource = Buffer.from(chunkSource, encoding);
+    }
     this._byteLength = byteLength;
   }
 
   _read() {
-    if (this._byteLength >= this._chunk.length) {
-      this.push(this._chunk);
-      this._byteLength -= this._chunk.length;
+    const nextChunk = this.getChunk();
+    if (this._byteLength >= nextChunk.length) {
+      this.push(nextChunk);
+      this._byteLength -= nextChunk.length;
     } else if (this._byteLength !== 0) {
-      this.push(this._chunk.subarray(0, this._byteLength));
+      this.push(nextChunk.subarray(0, this._byteLength));
       this._byteLength = 0;
     } else {
       this.push(null);
     }
+  }
+
+  private getChunk() {
+    if (typeof this._chunkSource === 'function') {
+      return this._chunkSource(this._chunkIndex++);
+    }
+    return this._chunkSource;
   }
 }
 

@@ -1,0 +1,27 @@
+{
+  "name": "benchmarks",
+  "version": "1.0.0",
+  "description": "Benchmarks for the template-replace-stream module and comparable modules",
+  "main": "index.ts",
+  "scripts": {
+    "start": "npx tsx index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoulKa/template-replace-stream.git"
+  },
+  "author": "Louis Wilke",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SoulKa/template-replace-stream/issues"
+  },
+  "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
+  "devDependencies": {
+    "@types/replacestream": "^4.0.4",
+    "plotly.js-dist-min": "^2.32.0",
+    "replacestream": "^4.0.3",
+    "stream-replace-string": "^2.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.11.0"
+  }
+}
