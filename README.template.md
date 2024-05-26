@@ -2,11 +2,13 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript and consists of only {{loc}} lines of code.
+This module is written in pure TypeScript, consists of only {{loc}} lines of code and has no other dependencies.
 
 ## Install
 
 `npm install template-replace-stream`
+
+This module can be imported via `require()` or `import` in JavaScript
 
 ## Usage
 
@@ -55,3 +57,7 @@ type TemplateReplaceStreamOptions = {
   streamOptions?: TransformOptions;
 }
 ```
+
+## Benchmarks
+
+> Coming soon
