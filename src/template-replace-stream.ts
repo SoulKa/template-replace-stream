@@ -49,8 +49,6 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   streamOptions: undefined
 }
 
-const SPACE = ' '.charCodeAt(0);
-
 /**
  * A stream that replaces template variables in a stream with values from a map or resolver function.
  */
