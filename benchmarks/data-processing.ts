@@ -35,12 +35,11 @@ function getSizes(measurements: Map<Framework, Mesaurement[]>) {
 
 }
 
-export function saveThroughputVsDataSize(measurements: Map<Framework, Mesaurement[]>) {
-  const sizes = getSizes(measurements);
+export function saveThroughputVsDataSize(measurements: Map<Framework, Mesaurement[]>, name: string) {
   const lines = [] as string[][];
   lines.push(["size-in-mib", ...measurements.keys()]);
 
-  for (const size of sizes) {
+  for (const size of getSizes(measurements)) {
     const line = [size.toString()];
     for (const [, benchmark] of measurements) {
       const measurement = benchmark.find(m => m.sourceDataSize === size);
@@ -53,5 +52,25 @@ export function saveThroughputVsDataSize(measurements: Map<Framework, Mesauremen
     lines.push(line);
   }
 
-  writeDataToCsv("throughput-vs-data-size", lines);
+  writeDataToCsv("throughput-vs-data-size-" + name, lines);
+}
+
+export function saveSizeVsDuration(measurements: Map<Framework, Mesaurement[]>, name: string) {
+  const lines = [] as string[][];
+  lines.push(["size-in-mib", ...measurements.keys()]);
+
+  for (const size of getSizes(measurements)) {
+    const line = [size.toString()];
+    for (const [, benchmark] of measurements) {
+      const measurement = benchmark.find(m => m.sourceDataSize === size);
+      if (measurement) {
+        line.push(measurement.duration.toString());
+      } else {
+        line.push("");
+      }
+    }
+    lines.push(line);
+  }
+
+  writeDataToCsv("size-vs-duration-" + name, lines);
 }

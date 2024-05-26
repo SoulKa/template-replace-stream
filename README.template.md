@@ -68,8 +68,12 @@ type TemplateReplaceStreamOptions = {
 
 ## Benchmarks
 
-![Throughput vs. File Size](benchmarks/plots/throughput-vs-data-size.png)
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip and an on-board SSD. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
 
-Like the raw file system stream, a `TemplateReplaceStream` becomes exponentially faster with an increasing source file size. It is more than 20x faster than the `replace-stream`.
+![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
-We will provide more benchmarks with the next release.
+Like the raw file system stream, a `TemplateReplaceStream` becomes exponentially faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was almost 20GiB/s when replacing a single variable in a 100MiB file.
+
+![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
+
+We will provide more benchmarks with the next release, especially with replacing a lot of variables.

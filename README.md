@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 278 lines of code and has no other dependencies.
+This module is written in pure TypeScript, consists of only 278 lines of code and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
 
 ## Install
 
@@ -113,19 +113,35 @@ readmeWriteStream.on("finish", () => console.log("Finished writing README.md"));
 type TemplateReplaceStreamOptions = {
   /** Default: `false`. If true, the stream creates logs on debug level */
   log: boolean;
-  /** Default: `false`. If true, the stream throws an error when a variable is missing */
-  throwOnMissingVariable: boolean;
-  /** Default: `100`. The maximum length of a variable name including whitespaces around it */
+  /**
+   * Default: `false`. If true, the stream throws an error when a template variable has no
+   * replacement value
+   */
+  throwOnUnmatchedTemplate: boolean;
+  /**
+   * Default: `100`. The maximum length of a variable name between a start and end pattern including
+   * whitespaces around it. Any variable name longer than this length is ignored, i.e. the search
+   * for the end pattern canceled and the stream looks for the next start pattern.
+   * Note that a shorter length improves performance but may not find all variables.
+   */
   maxVariableNameLength: number;
-  /** Default: `'{{'`. The start pattern of a variable either as string or buffer */
+  /** Default: `'{{'`. The start pattern of a template string either as string or buffer */
   startPattern: string | Buffer;
-  /** Default: `'}}'`. The end pattern of a variable either as string or buffer */
+  /** Default: `'}}'`. The end pattern of a template string either as string or buffer */
   endPattern: string | Buffer;
-  /** The options for the lower level {@link Transform} stream. Do not replace transform or flush */
+  /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
   streamOptions?: TransformOptions;
 }
 ```
 
 ## Benchmarks
 
-> Coming soon
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip and an on-board SSD. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
+
+![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
+
+Like the raw file system stream, a `TemplateReplaceStream` becomes exponentially faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was almost 20GiB/s when replacing a single variable in a 100MiB file.
+
+![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
+
+We will provide more benchmarks with the next release, especially with replacing a lot of variables.

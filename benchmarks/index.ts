@@ -4,7 +4,7 @@ import {consumeStream, FixedLengthReadStream, getChunk} from "../tests/stream";
 import {Readable} from "node:stream";
 import streamReplaceString from "stream-replace-string";
 import {Framework, Mesaurement} from "./types";
-import {saveThroughputVsDataSize} from "./data-processing";
+import {saveSizeVsDuration, saveThroughputVsDataSize} from "./data-processing";
 
 
 const TEMPLATE_VARIABLE = 't';
@@ -73,7 +73,8 @@ async function benchmark() {
     }
   }
 
-  saveThroughputVsDataSize(RESULTS);
+  saveThroughputVsDataSize(RESULTS, "with-one-replacement");
+  saveSizeVsDuration(RESULTS, "with-one-replacement");
 }
 
 benchmark().then(() => console.log('Done')).catch(console.error);
