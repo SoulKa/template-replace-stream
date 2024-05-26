@@ -76,4 +76,6 @@ Like the raw file system stream, a `TemplateReplaceStream` becomes exponentially
 
 ![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
 
+Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateReplaceStream`. Reading the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` packages was omitted im this graph, as it took over 16s to process the 100MiB file.
+
 We will provide more benchmarks with the next release, especially with replacing a lot of variables.
