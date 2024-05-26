@@ -3,20 +3,9 @@ import {getDurationFromNow, getSteadyTimestamp} from "../tests/time-util";
 import {consumeStream, FixedLengthReadStream, getChunk} from "../tests/stream";
 import {Readable} from "node:stream";
 import streamReplaceString from "stream-replace-string";
+import {Framework, Mesaurement} from "./types";
+import {saveThroughputVsDataSize} from "./data-processing";
 
-declare type Framework =
-    "native"
-    | "template-replace-stream"
-    | "stream-replace-string"
-    | "replace-stream";
-
-declare type Mesaurement = {
-  framework: Framework;
-  duration: number;
-  sourceDataSize: number;
-  replacementDataSize: number;
-  numReplacements: number;
-};
 
 const TEMPLATE_VARIABLE = 't';
 const TEMPLATE_STRING = `{{${TEMPLATE_VARIABLE}}`;
@@ -59,7 +48,6 @@ async function getReplaceStream(framework: Framework, sourceStream: Readable, re
   }
 }
 
-
 async function benchmark() {
   for (const sizeMiB of DATA_SIZES_MiB) {
     let frameworks = FRAMEWORKS.slice();
@@ -85,7 +73,7 @@ async function benchmark() {
     }
   }
 
-  console.log('Results:', RESULTS);
+  saveThroughputVsDataSize(RESULTS);
 }
 
 benchmark().then(() => console.log('Done')).catch(console.error);
