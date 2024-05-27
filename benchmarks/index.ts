@@ -15,7 +15,7 @@ import {saveSizeVsDuration, saveThroughputVsDataSize, toMiB} from "./data-proces
 const TEMPLATE_VARIABLE = 't';
 const TEMPLATE_STRING = `{{${TEMPLATE_VARIABLE}}}`;
 
-const DATA_SIZES_MiB = [1, 10, 50];
+const DATA_SIZES_MiB = [1, 10, 50, 100];
 const BYTE_PER_MiB = 1024 * 1024;
 
 async function getReplaceStream(framework: Framework, sourceStream: Readable, replacements: Map<string, string | Readable>) {
@@ -70,7 +70,7 @@ async function runBenchmark(benchmark: Benchmark): Promise<Measurement> {
 async function forEachSizeAndFramework(callback: (sizeMiB: number, framework: Framework) => Promise<void>) {
   for (const sizeMiB of DATA_SIZES_MiB) {
     let frameworks = FRAMEWORKS.slice();
-    //if (sizeMiB > 100) frameworks = ["native", "template-replace-stream"]; // only fast frameworks for large data
+    //if (sizeMiB > 100) frameworks = ["native", "template-replace-stream", "replacestream"]; // only fast frameworks for large data
     for (const framework of frameworks) {
       await callback(sizeMiB, framework);
     }
