@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only {{loc}} lines of code and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
+This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
 
 ## Install
 
@@ -72,10 +72,24 @@ The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip and an on-bo
 
 ![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
-Like the raw file system stream, a `TemplateReplaceStream` becomes exponentially faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was almost 20GiB/s when replacing a single variable in a 100MiB file.
+Like the raw file system stream, a `TemplateReplaceStream` becomes faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was almost 20GiB/s when replacing a single variable in a 100MiB file.
 
 ![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
 
 Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateReplaceStream`. Reading the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` packages was omitted im this graph, as it took over 16s to process the 100MiB file.
 
 We will provide more benchmarks with the next release, especially with replacing a lot of variables.
+
+## Changelog
+
+### 2.1
+
+- Add option `removeUnmatchedTemplate` that will always resolve unknown variables with an empty string, effectively removing the template string
+
+### 2.0
+- Drastically improve performance (by ~10x) by using `Buffer.indexOf()` instead of iterating over the buffer myself
+- Rename option `throwOnMissingVariable` to `throwOnUnmatchedTemplate`
+- Add benchmarks
+
+## 1.1
+- Update README
