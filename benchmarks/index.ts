@@ -109,14 +109,15 @@ async function benchmark() {
   await forEachSizeAndFramework(async (sizeMiB, framework) => {
     // prepare source stream
     const sizeBytes = sizeMiB * BYTE_PER_MiB;
-    const sourceStream = new FixedLengthReadStream(getChunkProvider(10000, sizeBytes), sizeBytes);
+    const numReplacements = 10000;
+    const sourceStream = new FixedLengthReadStream(getChunkProvider(numReplacements, sizeBytes), sizeBytes);
 
     // run benchmark
     addResult(await runBenchmark({
       framework,
       sourceDataSize: sizeMiB,
       replacementDataSize: 0,
-      numReplacements: 1,
+      numReplacements,
       sourceStream,
     }));
   });

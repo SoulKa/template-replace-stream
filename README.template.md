@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
+This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (we reached over 20GiB/s, see [Benchmarks](#benchmarks)).
 
 ## Install
 
@@ -70,22 +70,39 @@ type TemplateReplaceStreamOptions = {
 
 The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual files generated from- and to memory to omit any bottleneck due to the file system. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
 
+## Replacing a single Template Variable in a large File
+
 ![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
-Like the raw file system stream, a `TemplateReplaceStream` becomes faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was almost 20GiB/s when replacing a single variable in a 100MiB file.
+Like the raw file system stream, a `TemplateReplaceStream` becomes faster with an increasing source file size. It is more than 20x faster than the `replace-stream` when processing large files. The throughput of the `TemplateReplaceStream` was more than 20GiB/s when replacing a single variable in a 100MiB file.
 
 ![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
 
 Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateReplaceStream`. Reading the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` packages was omitted im this graph, as it took over 16s to process the 100MiB file.
 
-We will provide more benchmarks with the next release, especially with replacing a lot of variables.
+## Replacing 10 thousand Template Variables in a large File
+
+![Throughput vs. File Size when replacing a 10K Variables](benchmarks/plots/throughput-vs-data-size-with-10k-replacement.png)
+
+You can see that the performance declines when working with more replacements. Note that one reason is the virtually generated workload (see "native" in the graph). `TemplateReplaceStream` still reaches 10GiB/s.
+
+![Duration vs File Size when replacing a 10K Variables](benchmarks/plots/size-vs-duration-with-10k-replacement.png)
+
+To replace ten thousand template variables in a 100MiB file, the `TemplateReplaceStream` takes around 10ms. Since this duration is similar for smaller file sizes, we can see that it does not perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
 
-### 2.0
+### 2.1.0
+- Further improve performance by using `Buffer.indexOf()` to find the end of a template variable, too
+- Add more benchmarks
+
+### 2.0.0
 - Drastically improve performance (by ~10x) by using `Buffer.indexOf()` instead of iterating over the buffer myself
 - Rename option `throwOnMissingVariable` to `throwOnUnmatchedTemplate`
 - Add benchmarks
 
-## 1.1
+## 1.0.1
 - Update README
+
+## 1.0.0
+- Initial Release
