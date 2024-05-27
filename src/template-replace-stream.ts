@@ -8,9 +8,13 @@ export type TemplateReplaceStreamOptions = {
   log: boolean;
   /**
    * Default: `false`. If true, the stream throws an error when a template variable has no
-   * replacement value
+   * replacement value. Takes precedence over `removeUnmatchedTemplate`.
    */
   throwOnUnmatchedTemplate: boolean;
+  /** Default: `false`. If true, the stream removes unmatched template variables from the output,
+   * effectively writing an empty string for any `{{ ... }}` template that is not resolved.
+   */
+  removeUnmatchedTemplate: boolean;
   /**
    * Default: `100`. The maximum length of a variable name between a start and end pattern including
    * whitespaces around it. Any variable name longer than this length is ignored, i.e. the search
@@ -43,6 +47,7 @@ enum State {
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   log: false,
   throwOnUnmatchedTemplate: false,
+  removeUnmatchedTemplate: false,
   maxVariableNameLength: 100,
   startPattern: Buffer.from('{{', 'ascii'),
   endPattern: Buffer.from('}}', 'ascii'),
@@ -247,11 +252,9 @@ export class TemplateReplaceStream extends Transform {
     const variableName = variableBuffer.toString().trim();
     const value = this._resolveVariable(variableName);
     if (value === undefined) {
-      if (this._options.throwOnUnmatchedTemplate) {
-        throw new Error(`Variable "${variableName}" not found in the variable map`);
-      } else if (this._options.log) {
-        console.debug(`Unmatched variable "${variableName}"`);
-      }
+      if (this._options.throwOnUnmatchedTemplate) throw new Error(`Variable "${variableName}" not found in the variable map`);
+      if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
+      if (this._options.removeUnmatchedTemplate) return Buffer.alloc(0);
     } else {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
       return value;
