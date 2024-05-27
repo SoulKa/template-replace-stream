@@ -1,4 +1,4 @@
-import {Readable} from "stream";
+import {Readable} from "node:stream";
 
 export const DEFAULT_CHUNK_SIZE = 16 * 1024;  // 16 KiB
 
@@ -50,15 +50,12 @@ export class FixedLengthReadStream extends Readable {
     } else if (this._byteLength !== 0) {
       this.push(nextChunk.subarray(0, this._byteLength));
       this._byteLength = 0;
-    } else {
-      this.push(null);
     }
+    if (this._byteLength === 0) this.push(null);
   }
 
   private getChunk() {
-    if (typeof this._chunkSource === 'function') {
-      return this._chunkSource(this._chunkIndex++);
-    }
+    if (typeof this._chunkSource === 'function') return this._chunkSource(this._chunkIndex++);
     return this._chunkSource;
   }
 }
@@ -86,8 +83,11 @@ export function consumeStream(stream: Readable) {
   });
 }
 
-export async function streamToString(stream: Readable) {
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(chunk);
-  return Buffer.concat(chunks).toString();
+export function streamToString(stream: Readable) {
+  return new Promise<string>((resolve, reject) => {
+    const chunks = [] as Uint8Array[];
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString()));
+    stream.on('error', reject);
+    stream.on('data', chunk => chunks.push(chunk));
+  });
 }

@@ -19,11 +19,11 @@ export function toMiB(bytes: number) {
 
 /**
  * Calculate throughput in GiB/s
- * @param dataSize The size of the data in bytes
+ * @param dataSize The size of the data in MiB
  * @param duration The duration in milliseconds
  */
 function toThroughput(dataSize: number, duration: number) {
-  return toMiB(dataSize) / (duration / 1e3);
+  return dataSize / (duration / 1e3);
 }
 
 function writeDataToCsv(name: string, lines: Line[]) {
