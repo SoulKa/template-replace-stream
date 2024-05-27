@@ -1,5 +1,7 @@
 import {Readable} from "stream";
 
+export const DEFAULT_CHUNK_SIZE = 16 * 1024;  // 16 KiB
+
 export class FixedChunkSizeReadStream extends Readable {
 
   private readonly _chunkSize: number;
@@ -67,7 +69,7 @@ export class FixedLengthReadStream extends Readable {
  * @param content The content of the buffer that should be at the start of the chunk
  * @param chunkSize The size of chunk. It fills up the remaining space with spaces.
  */
-export function getChunk(content = '', chunkSize = 16 * 1024) {
+export function getChunk(content = '', chunkSize = DEFAULT_CHUNK_SIZE) {
   return Buffer.from(content + ' '.repeat(chunkSize - content.length));
 }
 
@@ -82,4 +84,10 @@ export function consumeStream(stream: Readable) {
     stream.on('error', reject);
     stream.on('data', chunk => bytesRead += chunk.length);
   });
+}
+
+export async function streamToString(stream: Readable) {
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks).toString();
 }

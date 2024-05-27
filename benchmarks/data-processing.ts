@@ -1,4 +1,4 @@
-import {Framework, Mesaurement} from "./types";
+import {Framework, FRAMEWORKS, Measurement} from "./types";
 import fs from "node:fs";
 import path from "path";
 
@@ -7,16 +7,26 @@ if (!fs.existsSync(plotDir)) {
   fs.mkdirSync(plotDir);
 }
 
+declare type Line = (string | number)[];
+
+function getLines(firstHeader: string) {
+  return [[firstHeader, ...FRAMEWORKS]] as Line[];
+}
+
+export function toMiB(bytes: number) {
+  return bytes / (1024 * 1024);
+}
+
 /**
- * Calculate throughput in MiB/s
- * @param dataSize The size of the data in MiB
+ * Calculate throughput in GiB/s
+ * @param dataSize The size of the data in bytes
  * @param duration The duration in milliseconds
  */
 function toThroughput(dataSize: number, duration: number) {
-  return dataSize / (duration / 1e3);
+  return toMiB(dataSize) / (duration / 1e3);
 }
 
-function writeDataToCsv(name: string, lines: string[][]) {
+function writeDataToCsv(name: string, lines: Line[]) {
   const writeStream = fs.createWriteStream(path.join(plotDir, name + ".csv"));
   for (const line of lines) {
     writeStream.write(line.join(",") + "\n");
@@ -24,27 +34,15 @@ function writeDataToCsv(name: string, lines: string[][]) {
   writeStream.end();
 }
 
-function getSizes(measurements: Map<Framework, Mesaurement[]>) {
-  const sizes = new Set<number>();
-  for (const [, benchmark] of measurements) {
-    for (const {sourceDataSize} of benchmark) {
-      sizes.add(sourceDataSize);
-    }
-  }
-  return [...sizes].sort((a, b) => a - b);
+export function saveThroughputVsDataSize(results: Map<number, Map<Framework, Measurement>>, name: string) {
+  const lines = getLines("size-in-mib");
 
-}
-
-export function saveThroughputVsDataSize(measurements: Map<Framework, Mesaurement[]>, name: string) {
-  const lines = [] as string[][];
-  lines.push(["size-in-mib", ...measurements.keys()]);
-
-  for (const size of getSizes(measurements)) {
-    const line = [size.toString()];
-    for (const [, benchmark] of measurements) {
-      const measurement = benchmark.find(m => m.sourceDataSize === size);
+  for (const [size, frameworks] of results) {
+    const line = [size] as Line;
+    for (const framework of FRAMEWORKS) {
+      const measurement = frameworks.get(framework);
       if (measurement) {
-        line.push(toThroughput(measurement.sourceDataSize, measurement.duration).toString());
+        line.push(toThroughput(measurement.sourceDataSize, measurement.duration));
       } else {
         line.push("");
       }
@@ -55,16 +53,15 @@ export function saveThroughputVsDataSize(measurements: Map<Framework, Mesauremen
   writeDataToCsv("throughput-vs-data-size-" + name, lines);
 }
 
-export function saveSizeVsDuration(measurements: Map<Framework, Mesaurement[]>, name: string) {
-  const lines = [] as string[][];
-  lines.push(["size-in-mib", ...measurements.keys()]);
+export function saveSizeVsDuration(results: Map<number, Map<Framework, Measurement>>, name: string) {
+  const lines = getLines("size-in-mib");
 
-  for (const size of getSizes(measurements)) {
-    const line = [size.toString()];
-    for (const [, benchmark] of measurements) {
-      const measurement = benchmark.find(m => m.sourceDataSize === size);
+  for (const [size, frameworks] of results) {
+    const line = [size] as Line;
+    for (const framework of FRAMEWORKS) {
+      const measurement = frameworks.get(framework);
       if (measurement) {
-        line.push(measurement.duration.toString());
+        line.push(measurement.duration);
       } else {
         line.push("");
       }

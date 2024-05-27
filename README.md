@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 281 lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
+This module is written in pure TypeScript, consists of only 275 lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
 
 ## Install
 
@@ -149,10 +149,6 @@ Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateRep
 We will provide more benchmarks with the next release, especially with replacing a lot of variables.
 
 ## Changelog
-
-### 2.1
-
-- Add option `removeUnmatchedTemplate` that will always resolve unknown variables with an empty string, effectively removing the template string
 
 ### 2.0
 - Drastically improve performance (by ~10x) by using `Buffer.indexOf()` instead of iterating over the buffer myself

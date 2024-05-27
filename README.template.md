@@ -82,10 +82,6 @@ We will provide more benchmarks with the next release, especially with replacing
 
 ## Changelog
 
-### 2.1
-
-- Add option `removeUnmatchedTemplate` that will always resolve unknown variables with an empty string, effectively removing the template string
-
 ### 2.0
 - Drastically improve performance (by ~10x) by using `Buffer.indexOf()` instead of iterating over the buffer myself
 - Rename option `throwOnMissingVariable` to `throwOnUnmatchedTemplate`
