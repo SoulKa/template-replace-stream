@@ -1,5 +1,7 @@
 # template-replace-stream
 
+![Logo](assets/logo.png)
+
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
 This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
@@ -68,7 +70,7 @@ type TemplateReplaceStreamOptions = {
 
 ## Benchmarks
 
-The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip and an on-board SSD. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual files generated from- and to memory to omit any bottleneck due to the file system. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
 
 ![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
