@@ -71,10 +71,10 @@ describe('TemplateReplaceStream', () => {
     expect(result).toBe(templateString);
   });
 
-  it('should replace variables in a stream using another string as replace value source', async () => {
+  it('should replace variables in a stream using another stream as replace value source', async () => {
     // Arrange
     const templateString = 'Hello, {{ name }}!';
-    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe', 1).pause();
+    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe', 1);
     const variableMap = new Map([['name', replaceValueSourceStream]]);
     const transformStream = new TemplateReplaceStream(variableMap);
     const templateStream = new FixedChunkSizeReadStream(templateString);

@@ -121,6 +121,7 @@ export class TemplateReplaceStream extends Transform {
                 this.writeToOutput(value, callback); // replace the template string with the value
                 this._stack = this._stack.subarray(this._stackIndex); // discard the template string
                 this._stackIndex = 0;
+                if (this._state as State === State.PIPING_STREAM) return; // stop processing until the source stream is finished
               } else {
                 this.releaseStack(this._stackIndex); // write the original template string
               }
@@ -281,7 +282,15 @@ export class TemplateReplaceStream extends Transform {
   }
 
   private async writeStreamToOutput(stream: Readable) {
-    for await (const chunk of stream) this.push(chunk);
+    for await (const chunk of stream) {
+      if (!this.push(chunk)) {
+        await new Promise<void>((resolve, reject) => {
+          this.once('drain', resolve);
+          this.once('error', reject);
+        });
+      }
+    }
+    this._state = State.SEARCHING_START_PATTERN;
   }
 
   private toBuffer(stringLike: string | Buffer) {
