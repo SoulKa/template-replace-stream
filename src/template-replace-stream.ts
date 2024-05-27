@@ -37,7 +37,8 @@ export type VariableResolver = Map<string, StringSource> | VariableResolverFunct
 enum State {
   SEARCHING_START_PATTERN,
   PROCESSING_VARIABLE,
-  SEARCHING_END_PATTERN
+  SEARCHING_END_PATTERN,
+  PIPING_STREAM
 }
 
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
@@ -117,7 +118,7 @@ export class TemplateReplaceStream extends Transform {
               const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
               const value = this.getValueOfVariable(variableNameBuffer);
               if (value) {
-                await this.writeToOutput(value); // replace the template string with the value
+                this.writeToOutput(value, callback); // replace the template string with the value
                 this._stack = this._stack.subarray(this._stackIndex); // discard the template string
               } else {
                 this.releaseStack(this._stackIndex); // write the original template string
@@ -135,7 +136,7 @@ export class TemplateReplaceStream extends Transform {
       this.push(chunk);
     }
 
-    callback();
+    if (this._state !== State.PIPING_STREAM) callback();
   }
 
   _flush(callback: TransformCallback) {
@@ -260,13 +261,19 @@ export class TemplateReplaceStream extends Transform {
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
    *
    * @param stringSource The source to write to the output stream
+   * @param callback The callback to call when the source was written
    */
-  private async writeToOutput(stringSource: StringSource) {
+  private writeToOutput(stringSource: StringSource, callback: TransformCallback) {
     if (stringSource instanceof Readable) {
-      for await (const chunk of stringSource) this.push(chunk);
+      this._state = State.PIPING_STREAM;
+      this.writeStreamToOutput(stringSource).then(() => callback()).catch(callback);
     } else {
       this.push(this.toBuffer(stringSource));
     }
+  }
+
+  private async writeStreamToOutput(stream: Readable) {
+    for await (const chunk of stream) this.push(chunk);
   }
 
   private toBuffer(stringLike: string | Buffer) {
