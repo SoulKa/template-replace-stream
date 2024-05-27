@@ -6,7 +6,8 @@ import sloc from "sloc"
 const rootDir = path.join(__dirname, "..");
 const exampleFiles = ["javascript-example.js", "typescript-example.ts", "create-readme.ts"];
 
-const loc = sloc(fs.readFileSync(path.join(rootDir, "src", "template-replace-stream.ts"), "utf8"), "ts").total;
+const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "src", "template-replace-stream.ts"), "utf8"), "ts");
+const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
 
 /**
  * Opens a file stream and replaces the import paths in the examples. This is used to
