@@ -1,4 +1,6 @@
-import {Readable} from "stream";
+import {Readable} from "node:stream";
+
+export const DEFAULT_CHUNK_SIZE = 16 * 1024;  // 16 KiB
 
 export class FixedChunkSizeReadStream extends Readable {
 
@@ -48,15 +50,12 @@ export class FixedLengthReadStream extends Readable {
     } else if (this._byteLength !== 0) {
       this.push(nextChunk.subarray(0, this._byteLength));
       this._byteLength = 0;
-    } else {
-      this.push(null);
     }
+    if (this._byteLength === 0) this.push(null);
   }
 
   private getChunk() {
-    if (typeof this._chunkSource === 'function') {
-      return this._chunkSource(this._chunkIndex++);
-    }
+    if (typeof this._chunkSource === 'function') return this._chunkSource(this._chunkIndex++);
     return this._chunkSource;
   }
 }
@@ -67,7 +66,7 @@ export class FixedLengthReadStream extends Readable {
  * @param content The content of the buffer that should be at the start of the chunk
  * @param chunkSize The size of chunk. It fills up the remaining space with spaces.
  */
-export function getChunk(content = '', chunkSize = 16 * 1024) {
+export function getChunk(content = '', chunkSize = DEFAULT_CHUNK_SIZE) {
   return Buffer.from(content + ' '.repeat(chunkSize - content.length));
 }
 
@@ -81,5 +80,14 @@ export function consumeStream(stream: Readable) {
     stream.on('end', () => resolve(bytesRead));
     stream.on('error', reject);
     stream.on('data', chunk => bytesRead += chunk.length);
+  });
+}
+
+export function streamToString(stream: Readable) {
+  return new Promise<string>((resolve, reject) => {
+    const chunks = [] as Uint8Array[];
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString()));
+    stream.on('error', reject);
+    stream.on('data', chunk => chunks.push(chunk));
   });
 }

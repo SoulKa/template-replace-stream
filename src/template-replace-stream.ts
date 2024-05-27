@@ -8,7 +8,7 @@ export type TemplateReplaceStreamOptions = {
   log: boolean;
   /**
    * Default: `false`. If true, the stream throws an error when a template variable has no
-   * replacement value
+   * replacement value. Takes precedence over `removeUnmatchedTemplate`.
    */
   throwOnUnmatchedTemplate: boolean;
   /**
@@ -37,7 +37,8 @@ export type VariableResolver = Map<string, StringSource> | VariableResolverFunct
 enum State {
   SEARCHING_START_PATTERN,
   PROCESSING_VARIABLE,
-  SEARCHING_END_PATTERN
+  SEARCHING_END_PATTERN,
+  PIPING_STREAM
 }
 
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
@@ -117,8 +118,10 @@ export class TemplateReplaceStream extends Transform {
               const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
               const value = this.getValueOfVariable(variableNameBuffer);
               if (value) {
-                await this.writeToOutput(value); // replace the template string with the value
+                this.writeToOutput(value, callback); // replace the template string with the value
                 this._stack = this._stack.subarray(this._stackIndex); // discard the template string
+                this._stackIndex = 0;
+                if (this._state as State === State.PIPING_STREAM) return; // stop processing until the source stream is finished
               } else {
                 this.releaseStack(this._stackIndex); // write the original template string
               }
@@ -135,7 +138,7 @@ export class TemplateReplaceStream extends Transform {
       this.push(chunk);
     }
 
-    callback();
+    if (this._state !== State.PIPING_STREAM) callback();
   }
 
   _flush(callback: TransformCallback) {
@@ -174,28 +177,34 @@ export class TemplateReplaceStream extends Transform {
    * pattern symbol is found, the state is set to searching start pattern.
    */
   private findVariableEnd() {
-    for (; this._stackIndex < this._options.maxVariableNameLength + this._startPattern.length; this._stackIndex++) {
-      if (this._stackIndex >= this._stack.length) return; // end of stack reached, need more data
-      const char = this._stack[this._stackIndex];
-      if (char === this._endPattern[0]) {
-        this._state = State.SEARCHING_END_PATTERN;
-        this._matchCount = 1;
-        this._stackIndex++;
-        return;
-      } else if (char === this._startPattern[0]) {
-        this._state = State.SEARCHING_START_PATTERN;
-        this._matchCount = 1;
-        this._stackIndex++;
-        this.releaseStack(this._stackIndex - this._matchCount);
-        return;
+    const nextEndIndex = this._stack.indexOf(this._endPattern[0], this._stackIndex);
+    const nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
+
+    if (nextEndIndex === -1 && nextStartIndex === -1) {
+      this._matchCount += this._stack.length - this._stackIndex;
+      if (this._matchCount < this._options.maxVariableNameLength) {
+        this._stackIndex = this._stack.length;
+        return; // need more data
       }
+
+      // not found within the maximum length
+      this._state = State.SEARCHING_START_PATTERN;
+      if (this._options.throwOnUnmatchedTemplate) throw new Error('Variable name processing reached limit');
+      if (this._options.log) console.debug('Variable name processing reached limit, skipping');
+      this.releaseStack(this._stack.length);
+      return; // no match
     }
 
-    // not found within the maximum length
-    if (this._options.throwOnUnmatchedTemplate) throw new Error('Variable name processing reached limit');
-    if (this._options.log) console.debug('Variable name processing reached limit, skipping');
-    this._state = State.SEARCHING_START_PATTERN;
-    this.releaseStack(this._stackIndex);
+    // found a pattern
+    if (nextStartIndex === -1 || nextStartIndex > nextEndIndex) {
+      this._state = State.SEARCHING_END_PATTERN;
+      this._stackIndex = nextEndIndex + 1;
+    } else {
+      this._state = State.SEARCHING_START_PATTERN;
+      this._stackIndex = nextStartIndex + 1;
+      this.releaseStack(nextStartIndex);
+    }
+    this._matchCount = 1;
   }
 
   /**
@@ -205,17 +214,18 @@ export class TemplateReplaceStream extends Transform {
    * a match when continuing the search with the next chunk.
    */
   private findEndPattern() {
+    let match = true;
     for (; this._matchCount < this._endPattern.length; this._matchCount++ & this._stackIndex++) {
       if (this._stackIndex >= this._stack.length) return false; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._endPattern[this._matchCount]) {
         this.releaseStack(this._stackIndex);
-        this._matchCount = 0;
-        this._state = State.SEARCHING_START_PATTERN;
-        return false; // no match
+        match = false; // no match
+        break;
       }
     }
+    this._matchCount = 0;
     this._state = State.SEARCHING_START_PATTERN;
-    return true; // match found
+    return match;
   }
 
   /**
@@ -247,11 +257,8 @@ export class TemplateReplaceStream extends Transform {
     const variableName = variableBuffer.toString().trim();
     const value = this._resolveVariable(variableName);
     if (value === undefined) {
-      if (this._options.throwOnUnmatchedTemplate) {
-        throw new Error(`Variable "${variableName}" not found in the variable map`);
-      } else if (this._options.log) {
-        console.debug(`Unmatched variable "${variableName}"`);
-      }
+      if (this._options.throwOnUnmatchedTemplate) throw new Error(`Variable "${variableName}" not found in the variable map`);
+      if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
     } else {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
       return value;
@@ -263,13 +270,27 @@ export class TemplateReplaceStream extends Transform {
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
    *
    * @param stringSource The source to write to the output stream
+   * @param callback The callback to call when the source was written
    */
-  private async writeToOutput(stringSource: StringSource) {
+  private writeToOutput(stringSource: StringSource, callback: TransformCallback) {
     if (stringSource instanceof Readable) {
-      for await (const chunk of stringSource) this.push(chunk);
+      this._state = State.PIPING_STREAM;
+      this.writeStreamToOutput(stringSource).then(() => callback()).catch(callback);
     } else {
       this.push(this.toBuffer(stringSource));
     }
+  }
+
+  private async writeStreamToOutput(stream: Readable) {
+    for await (const chunk of stream) {
+      if (!this.push(chunk)) {
+        await new Promise<void>((resolve, reject) => {
+          this.once('drain', resolve);
+          this.once('error', reject);
+        });
+      }
+    }
+    this._state = State.SEARCHING_START_PATTERN;
   }
 
   private toBuffer(stringLike: string | Buffer) {

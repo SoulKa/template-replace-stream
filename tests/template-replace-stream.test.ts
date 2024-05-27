@@ -1,13 +1,15 @@
 import {Readable} from 'stream';
 import {TemplateReplaceStream} from '../src';
 import {describe, expect, it} from "@jest/globals";
-import {consumeStream, FixedChunkSizeReadStream, FixedLengthReadStream, getChunk} from "./stream";
+import {
+  consumeStream,
+  DEFAULT_CHUNK_SIZE,
+  FixedChunkSizeReadStream,
+  FixedLengthReadStream,
+  getChunk,
+  streamToString
+} from "./stream";
 
-async function streamToString(stream: Readable) {
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(chunk);
-  return Buffer.concat(chunks).toString();
-}
 
 describe('TemplateReplaceStream', () => {
   it('should replace variables in a stream', async () => {
@@ -22,6 +24,25 @@ describe('TemplateReplaceStream', () => {
 
     // Assert
     expect(result).toBe('Hello, World!');
+  });
+
+  it('should replace variables in a large stream', async () => {
+    // Arrange
+    const streamLength = 25 * 1024 * 1024;
+    const variableName = 'name';
+    const template = `{{ ${variableName} }}`;
+    const replacement = 'you';
+    const expectedStart = `Hello, ${replacement}!`;
+    const variableMap = new Map([[variableName, replacement]]);
+    const readable: Readable = new FixedLengthReadStream(getChunk(expectedStart.replace(replacement, template)), streamLength);
+    const transformStream = new TemplateReplaceStream(variableMap);
+
+    // Act
+    const result = await streamToString(readable.pipe(transformStream));
+
+    // Assert
+    expect(result.length).toBe(streamLength - Math.ceil(streamLength / DEFAULT_CHUNK_SIZE) * (template.length - replacement.length));
+    expect(result.substring(0, expectedStart.length)).toBe(expectedStart);
   });
 
   it('should not modify the stream if there are no template variables', async () => {
@@ -50,10 +71,10 @@ describe('TemplateReplaceStream', () => {
     expect(result).toBe(templateString);
   });
 
-  it('should replace variables in a stream using another string as replace value source', async () => {
+  it('should replace variables in a stream using another stream as replace value source', async () => {
     // Arrange
     const templateString = 'Hello, {{ name }}!';
-    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe', 1).pause();
+    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe', 1);
     const variableMap = new Map([['name', replaceValueSourceStream]]);
     const transformStream = new TemplateReplaceStream(variableMap);
     const templateStream = new FixedChunkSizeReadStream(templateString);
