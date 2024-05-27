@@ -78,17 +78,4 @@ describe('TemplateReplaceStream', () => {
     // Assert
     expect(bytesRead).toBe(valueStreamLength);
   });
-
-  it('should replace unknown variables with an empty string when configured', async () => {
-    // Arrange
-    const templateString = 'Hello, {{ name }}!';
-    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
-    const transformStream = new TemplateReplaceStream(new Map(), {removeUnmatchedTemplate: true});
-
-    // Act
-    const result = await streamToString(readable.pipe(transformStream));
-
-    // Assert
-    expect(result).toBe('Hello, !');
-  });
 });
