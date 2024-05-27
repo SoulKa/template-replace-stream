@@ -1,7 +1,5 @@
 # template-replace-stream
 
-![Logo](assets/logo.png)
-
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
 This module is written in pure TypeScript, consists of only 281 lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (see [Benchmarks](#benchmarks)).
