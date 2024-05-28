@@ -7,16 +7,16 @@ describe('FixedChunkSizeReadStream', () => {
     // Arrange
     const sourceString = 'Hello, World!';
     const expectedChunks = sourceString.split('');
-    const chunks = [] as string[];
+    const actualChunks: string[] = [];
     const buffer = Buffer.from(sourceString);
     const stream: Readable = new FixedChunkSizeReadStream(buffer, 1);
 
     // Act
-    stream.on('data', (chunk) => chunks.push(chunk.toString()));
+    stream.on('data', (chunk) => actualChunks.push(chunk.toString()));
     await new Promise((resolve) => stream.on('end', resolve));
 
     // Assert
-    expect(chunks).toEqual(expectedChunks);
+    expect(actualChunks).toEqual(expectedChunks);
   });
 });
 

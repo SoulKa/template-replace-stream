@@ -1,4 +1,4 @@
-const {TemplateReplaceStream} = require("../dist");
+const {TemplateReplaceStream} = require("template-replace-stream");
 const fs = require("node:fs");
 const path = require("node:path");
 

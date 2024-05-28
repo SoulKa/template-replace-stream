@@ -1,5 +1,5 @@
 import {Readable} from 'stream';
-import {TemplateReplaceStream} from '../src';
+import {TemplateReplaceStream} from 'template-replace-stream';
 import {describe, expect, it} from "@jest/globals";
 import {
   consumeStream,

@@ -1,2 +1,1 @@
-# Since we copy the template-replace-stream from within this repostory, a lock does not make sense here
-package-lock.json
+example.txt
