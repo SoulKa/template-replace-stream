@@ -4,7 +4,7 @@
   "description": "Tests for the template-replace-stream module",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "repository": {
     "type": "git",
