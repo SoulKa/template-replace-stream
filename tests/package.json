@@ -1,11 +1,9 @@
 {
-  "name": "examples",
+  "name": "tests",
   "version": "1.0.0",
-  "description": "Example code for the template-replace-stream module",
+  "description": "Tests for the template-replace-stream module",
+  "main": "index.js",
   "scripts": {
-    "typescript": "ts-node typescript-example.ts",
-    "javascript": "node javascript-example.js",
-    "build:readme": "ts-node create-readme.ts",
     "test": "jest",
     "postinstall": "npm link .."
   },
@@ -20,8 +18,8 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "@types/sloc": "^0.2.3",
-    "sloc": "^0.3.2",
-    "ts-node": "^10.9.2"
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
+    "typescript": "^5.4.5"
   }
 }

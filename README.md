@@ -17,7 +17,7 @@ You create a `TemplateReplaceStream` by passing a source of template variables a
 ### JavaScript
 
 ```js
-const {TemplateReplaceStream} = require("../dist");
+const {TemplateReplaceStream} = require("template-replace-stream");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -37,7 +37,7 @@ writeStream.on("finish", () => console.log("Finished writing example.txt"));
 ### TypeScript
 
 ```ts
-import {TemplateReplaceStream} from "../src";
+import {TemplateReplaceStream} from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -63,35 +63,24 @@ It's also possible to pass another `Readable` as replacement value source to the
 <summary>Advanced Example Code</summary>
 
 ```ts
-import {StringSource, TemplateReplaceStream} from "../src";
-import fs from "fs";
-import path from "path";
-import sloc from "sloc"
+import {StringSource, TemplateReplaceStream} from "template-replace-stream";
+import fs from "node:fs";
+import path from "node:path";
+import sloc from "sloc";
 
 const rootDir = path.join(__dirname, "..");
 const exampleFiles = ["javascript-example.js", "typescript-example.ts", "create-readme.ts"];
 
-const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "src", "template-replace-stream.ts"), "utf8"), "ts");
+const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "template-replace-stream.ts"), "utf8"), "ts");
 const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
 
 /**
- * Opens a file stream and replaces the import paths in the examples. This is used to
- * have module imports in the README but still local imports in the examples.
+ * Opens a file stream to the given source file.
  *
  * @param file The file to read.
  */
 function openExampleStream(file: string) {
-  const replaceStream = new TemplateReplaceStream(
-      new Map([
-        [`../src`, `"template-replace-stream"`],
-        [`../dist`, `"template-replace-stream"`]
-      ]),
-      {
-        startPattern: '"',
-        endPattern: '"'
-      }
-  );
-  return fs.createReadStream(path.join(__dirname, file)).pipe(replaceStream);
+  return fs.createReadStream(path.join(__dirname, file));
 }
 
 // the map of example files and their read streams and further template variables

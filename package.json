@@ -10,8 +10,7 @@
   ],
   "scripts": {
     "build": "tsup && npm run build:readme",
-    "build:readme": "cd examples && npm i --silent && ts-node create-readme.ts",
-    "test": "jest"
+    "build:readme": "cd examples && ts-node create-readme.ts"
   },
   "repository": {
     "type": "git",
@@ -37,8 +36,6 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.3",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"
   }
