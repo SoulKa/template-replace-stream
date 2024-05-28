@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsup && npm run build:readme",
     "build:readme": "ts-node examples/create-readme.ts",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "cd examples && npm install"
   },
   "repository": {
     "type": "git",
