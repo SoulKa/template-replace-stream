@@ -107,6 +107,8 @@ async function benchmark() {
 
   results.clear();
   await forEachSizeAndFramework(async (sizeMiB, framework) => {
+    if (framework === 'stream-replace-string') return;
+
     // prepare source stream
     const sizeBytes = sizeMiB * BYTE_PER_MiB;
     const numReplacements = 10000;
