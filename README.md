@@ -137,7 +137,7 @@ type TemplateReplaceStreamOptions = {
 
 ## Benchmarks
 
-The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual files generated from- and to memory to omit any bottleneck due to the file system. The "native" data refers to reading a files from disk without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual files generated from- and to memory to omit any bottleneck due to the file system. The "native" data refers to reading a virtual file without doing anything else with it (native `fs.Readable` streams). So they are the absolute highest possible.
 
 ## Replacing a single Template Variable in a large File
 
