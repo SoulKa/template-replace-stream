@@ -5,8 +5,7 @@
   "scripts": {
     "typescript": "ts-node typescript-example.ts",
     "javascript": "node javascript-example.js",
-    "build:readme": "ts-node create-readme.ts",
-    "test": "jest",
+    "build:readme": "ts-node generate-readme.ts",
     "postinstall": "npm link .."
   },
   "repository": {

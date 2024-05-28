@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 189 lines of code (including type
+This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type
 definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).

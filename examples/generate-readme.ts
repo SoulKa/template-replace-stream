@@ -4,9 +4,9 @@ import path from "node:path";
 import sloc from "sloc";
 
 const rootDir = path.join(__dirname, "..");
-const exampleFiles = ["javascript-example.js", "typescript-example.ts", "create-readme.ts"];
+const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
 
-const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "template-replace-stream.ts"), "utf8"), "ts");
+const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "index.ts"), "utf8"), "ts");
 const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
 
 /**
@@ -23,7 +23,7 @@ const templateMap = new Map<string, StringSource>(exampleFiles.map((file) => [fi
 templateMap.set("loc", loc.toString());
 
 // create the streams
-const readmeReadStream = fs.createReadStream(path.join(rootDir, "README.template.md"));
+const readmeReadStream = fs.createReadStream(path.join(rootDir, "template.md"));
 const readmeWriteStream = fs.createWriteStream(path.join(rootDir, "README.md"));
 
 // connect the streams and put the template replace stream in the middle
