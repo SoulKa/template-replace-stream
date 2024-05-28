@@ -10,9 +10,8 @@
   ],
   "scripts": {
     "build": "tsup && npm run build:readme",
-    "build:readme": "ts-node examples/create-readme.ts",
-    "test": "jest",
-    "postinstall": "cd examples && npm install"
+    "build:readme": "cd examples && npm i --silent && ts-node create-readme.ts",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
