@@ -37,8 +37,7 @@ export type VariableResolver = Map<string, StringSource> | VariableResolverFunct
 enum State {
   SEARCHING_START_PATTERN,
   PROCESSING_VARIABLE,
-  SEARCHING_END_PATTERN,
-  PIPING_STREAM
+  SEARCHING_END_PATTERN
 }
 
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
@@ -95,50 +94,49 @@ export class TemplateReplaceStream extends Transform {
   async _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
     if (typeof chunk === 'string') chunk = Buffer.from(chunk, encoding);
 
-    if (chunk instanceof Buffer) {
+    try {
+      if (chunk instanceof Buffer) {
 
-      // if there is text left from last iteration, prepend it to the chunk
-      if (this._stack.length === 0) {
-        this._stack = chunk;
-      } else {
-        this._stack = Buffer.concat([this._stack, chunk]);
-      }
-
-      while (this._stackIndex < this._stack.length) {
-        switch (this._state) {
-          case State.SEARCHING_START_PATTERN:
-            this.findStartPattern();
-            this.releaseStack(this._stackIndex - this._matchCount);
-            break;
-          case State.PROCESSING_VARIABLE:
-            this.findVariableEnd();
-            break;
-          case State.SEARCHING_END_PATTERN:
-            if (this.findEndPattern()) {
-              const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
-              const value = this.getValueOfVariable(variableNameBuffer);
-              if (value) {
-                this.writeToOutput(value, callback); // replace the template string with the value
-                this._stack = this._stack.subarray(this._stackIndex); // discard the template string
-                this._stackIndex = 0;
-                if (this._state as State === State.PIPING_STREAM) return; // stop processing until the source stream is finished
-              } else {
-                this.releaseStack(this._stackIndex); // write the original template string
-              }
-            }
-            break;
+        // if there is text left from last iteration, prepend it to the chunk
+        if (this._stack.length === 0) {
+          this._stack = chunk;
+        } else {
+          this._stack = Buffer.concat([this._stack, chunk]);
         }
+
+        while (this._stackIndex < this._stack.length) {
+          switch (this._state) {
+            case State.SEARCHING_START_PATTERN:
+              this.findStartPattern();
+              this.releaseStack(this._stackIndex - this._matchCount);
+              break;
+            case State.PROCESSING_VARIABLE:
+              this.findVariableEnd();
+              break;
+            case State.SEARCHING_END_PATTERN:
+              if (this.findEndPattern()) {
+                const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
+                const value = this.getValueOfVariable(variableNameBuffer);
+                if (value) {
+                  this._stack = this._stack.subarray(this._stackIndex); // discard the template string
+                  this._stackIndex = 0;
+                  await this.writeToOutput(value); // replace the template string with the value
+                } else {
+                  this.releaseStack(this._stackIndex); // write the original template string
+                }
+              }
+              break;
+          }
+        }
+      } else {
+        this.handleUnknownChunkType(chunk);
       }
-    } else {
-      if (this._options.throwOnUnmatchedTemplate) {
-        throw new Error('Cannot replace variables in non-string-link streams');
-      } else if (this._options.log) {
-        console.warn('Received non-buffer chunk. Will not modify it.');
-      }
-      this.push(chunk);
+    } catch (e) {
+      callback(e instanceof Error ? e : new Error(`${e}`));
+      return;
     }
 
-    if (this._state !== State.PIPING_STREAM) callback();
+    callback();
   }
 
   _flush(callback: TransformCallback) {
@@ -270,12 +268,10 @@ export class TemplateReplaceStream extends Transform {
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
    *
    * @param stringSource The source to write to the output stream
-   * @param callback The callback to call when the source was written
    */
-  private writeToOutput(stringSource: StringSource, callback: TransformCallback) {
+  private async writeToOutput(stringSource: StringSource) {
     if (stringSource instanceof Readable) {
-      this._state = State.PIPING_STREAM;
-      this.writeStreamToOutput(stringSource).then(() => callback()).catch(callback);
+      await this.writeStreamToOutput(stringSource);
     } else {
       this.push(this.toBuffer(stringSource));
     }
@@ -283,17 +279,20 @@ export class TemplateReplaceStream extends Transform {
 
   private async writeStreamToOutput(stream: Readable) {
     for await (const chunk of stream) {
-      if (!this.push(chunk)) {
-        await new Promise<void>((resolve, reject) => {
-          this.once('drain', resolve);
-          this.once('error', reject);
-        });
-      }
+      if (!this.push(chunk)) await new Promise<void>((resolve) => this.once('drain', resolve));
     }
-    this._state = State.SEARCHING_START_PATTERN;
   }
 
   private toBuffer(stringLike: string | Buffer) {
     return stringLike instanceof Buffer ? stringLike : Buffer.from(stringLike);
+  }
+
+  private handleUnknownChunkType(chunk: any) {
+    if (this._options.throwOnUnmatchedTemplate) {
+      throw new Error('Cannot replace variables in non-string-link streams');
+    } else if (this._options.log) {
+      console.warn('Received non-buffer chunk. Will not modify it.');
+    }
+    this.push(chunk);
   }
 }

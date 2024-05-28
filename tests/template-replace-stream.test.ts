@@ -14,8 +14,8 @@ import {
 describe('TemplateReplaceStream', () => {
   it('should replace variables in a stream', async () => {
     // Arrange
-    const templateString = 'Hello, {{ name }}!';
-    const variableMap = new Map([['name', 'World']]);
+    const templateString = '{{ greeting }}, {{ name }}!';
+    const variableMap = new Map([['greeting', 'Hello'], ['name', 'World']]);
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(variableMap);
 
@@ -98,5 +98,39 @@ describe('TemplateReplaceStream', () => {
 
     // Assert
     expect(bytesRead).toBe(valueStreamLength);
+  });
+
+  it('should replace variables in a stream using other streams as replace value source', async () => {
+    // Arrange
+    const templateStream = new FixedChunkSizeReadStream('{{ one }} {{ two }} {{ three }}');
+    const transformStream = new TemplateReplaceStream((key => new FixedChunkSizeReadStream(key)));
+
+    // Act
+    const result = await streamToString(templateStream.pipe(transformStream));
+
+    // Assert
+    expect(result).toBe('one two three');
+  });
+
+  it('should replace variables in a single character stream chunks using other streams as replace value source', async () => {
+    // Arrange
+    const templateStream = new FixedChunkSizeReadStream('{{ one }} {{ two }} {{ three }}', 1);
+    const transformStream = new TemplateReplaceStream((key => new FixedChunkSizeReadStream(key)));
+
+    // Act
+    const result = await streamToString(templateStream.pipe(transformStream));
+
+    // Assert
+    expect(result).toBe('one two three');
+  });
+
+  it('should throw an error if a template variable is not found', async () => {
+    // Arrange
+    const templateString = 'Hello, {{ name }}!';
+    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const transformStream = new TemplateReplaceStream(new Map(), {throwOnUnmatchedTemplate: true});
+
+    // Act & Assert
+    await expect(streamToString(readable.pipe(transformStream))).rejects.toThrow('Variable "name" not found in the variable map');
   });
 });

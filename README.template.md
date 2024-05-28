@@ -92,6 +92,9 @@ To replace ten thousand template variables in a 100MiB file, the `TemplateReplac
 
 ## Changelog
 
+### 2.1.1
+- Fix stream ending when replacing a template with another stream during the last chunk of data
+
 ### 2.1.0
 - Further improve performance by using `Buffer.indexOf()` to find the end of a template variable, too
 - Add more benchmarks
