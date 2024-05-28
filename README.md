@@ -2,7 +2,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 189 lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (we reached over 20GiB/s, see [Benchmarks](#benchmarks)).
+This module is written in pure TypeScript, consists of only 191 lines of code (including type definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide range of template variables while being extremely fast (we reached over 20GiB/s, see [Benchmarks](#benchmarks)).
 
 ## Install
 
@@ -37,7 +37,21 @@ writeStream.on("finish", () => console.log("Finished writing example.txt"));
 ### TypeScript
 
 ```ts
-{{ typescript-example.ts }}
+import {TemplateReplaceStream} from "../src";
+import fs from "node:fs";
+import path from "node:path";
+
+// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
+const variables = new Map([["replace-me", "really fast"]]);
+
+// create the streams
+const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
+const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
+const templateReplaceStream = new TemplateReplaceStream(variables);
+
+// connect the streams and put the template replace stream in the middle
+readStream.pipe(templateReplaceStream).pipe(writeStream);
+writeStream.on("finish", () => console.log("Finished writing example.txt"));
 ```
 
 ### Advanced
@@ -49,7 +63,48 @@ It's also possible to pass another `Readable` as replacement value source to the
 <summary>Advanced Example Code</summary>
 
 ```ts
-{{ create-readme.ts }}
+import {StringSource, TemplateReplaceStream} from "../src";
+import fs from "fs";
+import path from "path";
+import sloc from "sloc"
+
+const rootDir = path.join(__dirname, "..");
+const exampleFiles = ["javascript-example.js", "typescript-example.ts", "create-readme.ts"];
+
+const codeInfo = sloc(fs.readFileSync(path.join(rootDir, "src", "template-replace-stream.ts"), "utf8"), "ts");
+const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
+
+/**
+ * Opens a file stream and replaces the import paths in the examples. This is used to
+ * have module imports in the README but still local imports in the examples.
+ *
+ * @param file The file to read.
+ */
+function openExampleStream(file: string) {
+  const replaceStream = new TemplateReplaceStream(
+      new Map([
+        [`../src`, `"template-replace-stream"`],
+        [`../dist`, `"template-replace-stream"`]
+      ]),
+      {
+        startPattern: '"',
+        endPattern: '"'
+      }
+  );
+  return fs.createReadStream(path.join(__dirname, file)).pipe(replaceStream);
+}
+
+// the map of example files and their read streams and further template variables
+const templateMap = new Map<string, StringSource>(exampleFiles.map((file) => [file, openExampleStream(file)]));
+templateMap.set("loc", loc.toString());
+
+// create the streams
+const readmeReadStream = fs.createReadStream(path.join(rootDir, "README.template.md"));
+const readmeWriteStream = fs.createWriteStream(path.join(rootDir, "README.md"));
+
+// connect the streams and put the template replace stream in the middle
+readmeReadStream.pipe(new TemplateReplaceStream(templateMap)).pipe(readmeWriteStream);
+readmeWriteStream.on("finish", () => console.log("Finished writing README.md"));
 ```
 </details>
 
