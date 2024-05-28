@@ -10,7 +10,11 @@
   ],
   "scripts": {
     "build": "tsup && npm run build:readme",
-    "build:readme": "cd examples && ts-node create-readme.ts"
+    "build:all": "npm run build:examples && npm run build:tests && npm run build",
+    "build:readme": "cd examples && ts-node create-readme.ts",
+    "build:tests": "cd tests && npm install",
+    "build:examples": "cd examples && npm install",
+    "test": "cd tests && npm test"
   },
   "repository": {
     "type": "git",
