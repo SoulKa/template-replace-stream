@@ -1,5 +1,9 @@
 # template-replace-stream
 
+[![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)
+[![npm version](https://badge.fury.io/js/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
+[![Downloads](https://img.shields.io/npm/dm/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
+
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
 This module is written in pure TypeScript, consists of only {{loc}} lines of code (including type
