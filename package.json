@@ -40,6 +40,7 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
+    "@tsconfig/node20": "^20.1.4",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5"
   }

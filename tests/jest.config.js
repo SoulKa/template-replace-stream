@@ -3,6 +3,6 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleNameMapper: {
-    '^template-replace-stream/(.*)$': '../$1'
+    '^@/(.*)$': '../$1'
   }
 };
