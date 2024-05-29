@@ -56,28 +56,7 @@ into a stream before.
 ### Options
 
 ```ts
-type TemplateReplaceStreamOptions = {
-  /** Default: `false`. If true, the stream creates logs on debug level */
-  log: boolean;
-  /**
-   * Default: `false`. If true, the stream throws an error when a template variable has no
-   * replacement value
-   */
-  throwOnUnmatchedTemplate: boolean;
-  /**
-   * Default: `100`. The maximum length of a variable name between a start and end pattern including
-   * whitespaces around it. Any variable name longer than this length is ignored, i.e. the search
-   * for the end pattern canceled and the stream looks for the next start pattern.
-   * Note that a shorter length improves performance but may not find all variables.
-   */
-  maxVariableNameLength: number;
-  /** Default: `'{{'`. The start pattern of a template string either as string or buffer */
-  startPattern: string | Buffer;
-  /** Default: `'}}'`. The end pattern of a template string either as string or buffer */
-  endPattern: string | Buffer;
-  /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
-  streamOptions?: TransformOptions;
-}
+{{ options-definition }}
 ```
 
 ## Benchmarks
