@@ -13,7 +13,9 @@ see [Benchmarks](#benchmarks)).
 
 ## Install
 
-`npm install template-replace-stream`
+```bash
+npm install template-replace-stream
+```
 
 This module contains type definitions and also an `.mjs` file for maximum compatibility.
 
