@@ -97,6 +97,10 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
 
+### 2.1.2
+- Add CI to repository
+- Update README
+
 ### 2.1.1
 
 - Fix stream ending when replacing a template with another stream during the last chunk of data
