@@ -1,4 +1,4 @@
-import {TemplateReplaceStream} from "../src";
+import {TemplateReplaceStream} from "../";
 import {getDurationFromNow, getSteadyTimestamp} from "../tests/time-util";
 import {
   BufferGenerator,
@@ -8,7 +8,6 @@ import {
   getChunk
 } from "../tests/stream";
 import {Readable, Transform} from "node:stream";
-import streamReplaceString from "stream-replace-string";
 import {Benchmark, Framework, FRAMEWORKS, Measurement} from "./types";
 import {saveSizeVsDuration, saveThroughputVsDataSize, toMiB} from "./data-processing";
 
@@ -20,6 +19,7 @@ const BYTE_PER_MiB = 1024 * 1024;
 
 async function getReplaceStream(framework: Framework, sourceStream: Readable, replacements: Map<string, string | Readable>) {
   console.log(`Creating replace stream for ${framework} with ${replacements.size} replacements as lookup map...`);
+  const streamReplaceString = (await import('stream-replace-string')).default;
   const replaceStream = (await import('replacestream')).default;
   switch (framework) {
     case "native":
