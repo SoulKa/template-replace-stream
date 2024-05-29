@@ -26,21 +26,13 @@ returns a replacement value for a given template string.
 ### JavaScript
 
 ```js
-{
-  {
-    javascript - example.js
-  }
-}
+{{ javascript-example.js }}
 ```
 
 ### TypeScript
 
 ```ts
-{
-  {
-    typescript - example.ts
-  }
-}
+{{ typescript-example.ts }}
 ```
 
 ### Advanced
@@ -56,11 +48,7 @@ into a stream before.
 <summary>Advanced Example Code</summary>
 
 ```ts
-{
-  {
-    generate - readme.ts
-  }
-}
+{{ generate-readme.ts }}
 ```
 
 </details>
