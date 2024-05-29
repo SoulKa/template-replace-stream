@@ -4,7 +4,8 @@
   "description": "Tests for the template-replace-stream module",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:ci": "jest --ci --config=jest.ci.config.js"
   },
   "repository": {
     "type": "git",
