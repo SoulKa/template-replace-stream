@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:ci": "jest --ci --config=jest.ci.config.js"
+    "test:ci": "jest --ci --config=jest.config.ci.js"
   },
   "repository": {
     "type": "git",
