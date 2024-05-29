@@ -17,9 +17,7 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
     "jest": "^29.7.0",
-    "ts-jest": "^29.1.4",
-    "typescript": "^5.4.5"
+    "ts-jest": "^29.1.4"
   }
 }
