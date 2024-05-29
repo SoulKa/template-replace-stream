@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-
+    name: Build and Test Source Code
     runs-on: self-hosted
 
     steps:
@@ -24,20 +24,22 @@ jobs:
           npm ci
           npm run build:all
           npm test
-      - name: Archive production artifacts
+      - name: Archive build
         uses: actions/upload-artifact@v4
         with:
           name: build
           path: dist
           retention-days: 1
-      - name: Archive code coverage results
+      - name: Archive code coverage
         uses: actions/upload-artifact@v4
         with:
           name: code-coverage-report
           path: tests/coverage
 
   test:
+    name: Test build with different Node.js versions
     runs-on: self-hosted
+    needs: build
 
     strategy:
       matrix:
