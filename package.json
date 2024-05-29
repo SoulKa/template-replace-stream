@@ -31,7 +31,9 @@
     "variable",
     "map",
     "performance",
-    "simple"
+    "simple",
+    "template",
+    "typescript"
   ],
   "author": "Louis Wilke",
   "license": "MIT",
