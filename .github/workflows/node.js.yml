@@ -37,7 +37,7 @@ jobs:
           path: tests/coverage
 
   test:
-    name: Test build with different Node.js versions
+    name: Test build with Node.js ${{ matrix.node-version }}
     runs-on: self-hosted
     needs: build
 
