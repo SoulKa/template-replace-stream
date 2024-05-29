@@ -21,6 +21,7 @@
   "devDependencies": {
     "@types/sloc": "^0.2.3",
     "sloc": "^0.3.2",
+    "ts-morph": "^22.0.0",
     "ts-node": "^10.9.2"
   }
 }
