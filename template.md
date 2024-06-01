@@ -107,6 +107,10 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
 
+### Latest
+
+- Support `async` replacement value functions (`Promise<StringSource>` as return value)
+
 ### 2.1.2
 - Add CI to repository
 - Update README

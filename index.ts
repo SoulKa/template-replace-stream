@@ -26,7 +26,8 @@ export type TemplateReplaceStreamOptions = {
   streamOptions?: TransformOptions;
 }
 
-export type StringSource = string | Buffer | Readable;
+export type StringContent = string | Buffer | Readable
+export type StringSource = StringContent | Promise<StringContent>;
 
 /** A function that resolves a variable name to its value */
 export type VariableResolverFunction = (variable: string) => StringSource | undefined;
@@ -116,7 +117,7 @@ export class TemplateReplaceStream extends Transform {
             case State.SEARCHING_END_PATTERN:
               if (this.findEndPattern()) {
                 const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
-                const value = this.getValueOfVariable(variableNameBuffer);
+                const value = await this.getValueOfVariable(variableNameBuffer);
                 if (value) {
                   this._stack = this._stack.subarray(this._stackIndex); // discard the template string
                   this._stackIndex = 0;
@@ -251,9 +252,11 @@ export class TemplateReplaceStream extends Transform {
    * @param variableBuffer The buffer containing the variable name
    * @returns The value of the variable as buffer or undefined if it was not found
    */
-  private getValueOfVariable(variableBuffer: Buffer) {
+  private async getValueOfVariable(variableBuffer: Buffer) {
     const variableName = variableBuffer.toString().trim();
-    const value = this._resolveVariable(variableName);
+    let value = this._resolveVariable(variableName);
+    if (value instanceof Promise) value = await value;
+
     if (value === undefined) {
       if (this._options.throwOnUnmatchedTemplate) throw new Error(`Variable "${variableName}" not found in the variable map`);
       if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
@@ -267,9 +270,11 @@ export class TemplateReplaceStream extends Transform {
    * Writes the given string source to the output stream. If the source is a readable stream, it is
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
    *
+   * If the source is a promise, it is awaited before writing.
+   *
    * @param stringSource The source to write to the output stream
    */
-  private async writeToOutput(stringSource: StringSource) {
+  private async writeToOutput(stringSource: StringContent) {
     if (stringSource instanceof Readable) {
       await this.writeStreamToOutput(stringSource);
     } else {

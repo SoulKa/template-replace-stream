@@ -6,14 +6,16 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 189 lines of code (including type
+This module is written in pure TypeScript, consists of only 191 lines of code (including type
 definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
 
 ## Install
 
-`npm install template-replace-stream`
+```bash
+npm install template-replace-stream
+```
 
 This module contains type definitions and also an `.mjs` file for maximum compatibility.
 
@@ -205,6 +207,10 @@ around 10ms. Since this duration is similar for smaller file sizes, we can see t
 perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
+
+### Latest
+
+- Support `async` replacement value functions (`Promise<StringSource>` as return value)
 
 ### 2.1.2
 - Add CI to repository
