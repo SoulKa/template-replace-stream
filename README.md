@@ -1,6 +1,7 @@
 # template-replace-stream
 
 [![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)
+[![codecov](https://codecov.io/github/SoulKa/template-replace-stream/graph/badge.svg?token=JFCFRHKVL3)](https://codecov.io/github/SoulKa/template-replace-stream)
 [![npm version](https://badge.fury.io/js/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 [![Downloads](https://img.shields.io/npm/dm/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 
@@ -21,11 +22,12 @@ This module contains type definitions and also an `.mjs` file for maximum compat
 
 ### Supported Node.js Versions
 
-The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
+The following Node.js versions are tested to work with the package. Older versions are not tested
+but should still be able to use it.
 
-| 16.x | 18.x | 20.x | 22.x |
-| --- | --- | --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)   | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| 16.x                                                                                                                                                                                            | 18.x                                                                                                                                                                                            | 20.x                                                                                                                                                                                            | 22.x                                                                                                                                                                                            |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
 
@@ -147,26 +149,26 @@ function extractTypeDefinition(typeName: string, filePath: string) {
  * Options for the template replace stream.
  */
 export type TemplateReplaceStreamOptions = {
-    /** Default: `false`. If true, the stream creates logs on debug level */
-    log: boolean;
-    /**
-     * Default: `false`. If true, the stream throws an error when a template variable has no
-     * replacement value. Takes precedence over `removeUnmatchedTemplate`.
-     */
-    throwOnUnmatchedTemplate: boolean;
-    /**
-     * Default: `100`. The maximum length of a variable name between a start and end pattern including
-     * whitespaces around it. Any variable name longer than this length is ignored, i.e. the search
-     * for the end pattern canceled and the stream looks for the next start pattern.
-     * Note that a shorter length improves performance but may not find all variables.
-     */
-    maxVariableNameLength: number;
-    /** Default: `'{{'`. The start pattern of a template string either as string or buffer */
-    startPattern: string | Buffer;
-    /** Default: `'}}'`. The end pattern of a template string either as string or buffer */
-    endPattern: string | Buffer;
-    /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
-    streamOptions?: TransformOptions;
+  /** Default: `false`. If true, the stream creates logs on debug level */
+  log: boolean;
+  /**
+   * Default: `false`. If true, the stream throws an error when a template variable has no
+   * replacement value. Takes precedence over `removeUnmatchedTemplate`.
+   */
+  throwOnUnmatchedTemplate: boolean;
+  /**
+   * Default: `100`. The maximum length of a variable name between a start and end pattern including
+   * whitespaces around it. Any variable name longer than this length is ignored, i.e. the search
+   * for the end pattern canceled and the stream looks for the next start pattern.
+   * Note that a shorter length improves performance but may not find all variables.
+   */
+  maxVariableNameLength: number;
+  /** Default: `'{{'`. The start pattern of a template string either as string or buffer */
+  startPattern: string | Buffer;
+  /** Default: `'}}'`. The end pattern of a template string either as string or buffer */
+  endPattern: string | Buffer;
+  /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
+  streamOptions?: TransformOptions;
 };
 ```
 
@@ -213,6 +215,7 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 - Support `async` replacement value functions (`Promise<StringSource>` as return value)
 
 ### 2.1.2
+
 - Add CI to repository
 - Update README
 
