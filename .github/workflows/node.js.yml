@@ -32,11 +32,10 @@ jobs:
           name: build
           path: dist
           retention-days: 1
-      - name: Archive code coverage
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
         with:
-          name: code-coverage-report
-          path: tests/coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test:
     name: Test build with Node.js ${{ matrix.node-version }}
