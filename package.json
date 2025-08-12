@@ -14,7 +14,7 @@
     "build:readme": "cd examples && ts-node generate-readme.ts",
     "build:tests": "cd tests && npm install",
     "build:examples": "cd examples && npm install",
-    "test": "cd tests && npm test"
+    "test": "cd tests && npm run test"
   },
   "repository": {
     "type": "git",
@@ -42,8 +42,8 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
-    "tsup": "^8.0.2",
-    "typescript": "^5.4.5"
+    "@tsconfig/node24": "^24.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2"
   }
 }

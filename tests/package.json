@@ -4,8 +4,9 @@
   "description": "Tests for the template-replace-stream module",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
-    "test:ci": "jest --ci --config=jest.config.ci.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -18,7 +19,8 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.4"
+    "vitest": "^2.0.5",
+    "@types/node": "^22.5.4",
+    "typescript": "^5.9.2"
   }
 }

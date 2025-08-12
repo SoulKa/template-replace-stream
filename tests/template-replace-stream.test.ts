@@ -1,6 +1,6 @@
 import {Readable} from 'stream';
 import {TemplateReplaceStream} from 'template-replace-stream';
-import {describe, expect, it} from "@jest/globals";
+import {describe, expect, it} from "vitest";
 import {
   consumeStream,
   DEFAULT_CHUNK_SIZE,
