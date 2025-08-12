@@ -19,8 +19,8 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "vitest": "^2.0.5",
-    "@types/node": "^22.5.4",
-    "typescript": "^5.9.2"
+    "@types/node": "^24.2.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

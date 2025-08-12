@@ -1,12 +1,17 @@
-import {Readable} from "node:stream";
+import { Readable } from "node:stream";
 
 export type Framework =
-    "native"
-    | "template-replace-stream"
-    | "stream-replace-string"
-    | "replacestream";
+  | "native"
+  | "template-replace-stream"
+  | "stream-replace-string"
+  | "replacestream";
 
-export const FRAMEWORKS = ['native', 'template-replace-stream', 'stream-replace-string', 'replacestream'] as Framework[];
+export const FRAMEWORKS = [
+  "native",
+  "template-replace-stream",
+  "stream-replace-string",
+  "replacestream",
+] as Framework[];
 
 export type Measurement = {
   framework: Framework;
@@ -30,4 +35,4 @@ export type Benchmark = {
   numReplacements: number;
   sourceStream: Readable;
   getReplaceStream?: (benchmark: Benchmark) => Readable;
-}
+};

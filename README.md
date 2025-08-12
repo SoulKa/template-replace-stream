@@ -26,7 +26,7 @@ The following Node.js versions are tested to work with the package. Older versio
 but should still be able to use it.
 
 | 16.x                                                                                                                                                                                            | 18.x                                                                                                                                                                                            | 20.x                                                                                                                                                                                            | 22.x                                                                                                                                                                                            |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
@@ -38,7 +38,7 @@ returns a replacement value for a given template string.
 ### JavaScript
 
 ```js
-const {TemplateReplaceStream} = require("template-replace-stream");
+const { TemplateReplaceStream } = require("template-replace-stream");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -58,7 +58,7 @@ writeStream.on("finish", () => console.log("Finished writing example.txt"));
 ### TypeScript
 
 ```ts
-import {TemplateReplaceStream} from "template-replace-stream";
+import { TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -88,11 +88,11 @@ into a stream before.
 <summary>Advanced Example Code</summary>
 
 ```ts
-import {StringSource, TemplateReplaceStream} from "template-replace-stream";
+import { StringSource, TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 import sloc from "sloc";
-import {Project, ts} from "ts-morph";
+import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(__dirname, "..");
 const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
@@ -104,7 +104,9 @@ const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
 const optionsDefinition = extractTypeDefinition("TemplateReplaceStreamOptions", sourceFilePath);
 
 // the map of example files and their read streams and further template variables
-const templateMap = new Map<string, StringSource>(exampleFiles.map((file) => [file, openExampleStream(file)]));
+const templateMap = new Map<string, StringSource>(
+  exampleFiles.map((file) => [file, openExampleStream(file)])
+);
 templateMap.set("loc", loc.toString());
 templateMap.set("options-definition", optionsDefinition);
 
@@ -135,7 +137,7 @@ function extractTypeDefinition(typeName: string, filePath: string) {
   const sourceFile = new Project().addSourceFileAtPath(filePath);
   const typeNode = sourceFile.getTypeAlias(typeName)?.compilerNode;
   if (!typeNode) throw new Error(`Type alias ${typeName} not found.`);
-  const printer = ts.createPrinter({removeComments: false});
+  const printer = ts.createPrinter({ removeComments: false });
   return printer.printNode(ts.EmitHint.Unspecified, typeNode, sourceFile.compilerNode);
 }
 ```

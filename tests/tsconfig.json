@@ -2,9 +2,7 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "template-replace-stream": [
-        ".."
-      ]
+      "template-replace-stream": [".."]
     }
   }
 }

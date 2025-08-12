@@ -1,4 +1,4 @@
-import {Framework, FRAMEWORKS, Measurement} from "./types";
+import { Framework, FRAMEWORKS, Measurement } from "./types";
 import fs from "node:fs";
 import path from "path";
 
@@ -34,7 +34,10 @@ function writeDataToCsv(name: string, lines: Line[]) {
   writeStream.end();
 }
 
-export function saveThroughputVsDataSize(results: Map<number, Map<Framework, Measurement>>, name: string) {
+export function saveThroughputVsDataSize(
+  results: Map<number, Map<Framework, Measurement>>,
+  name: string
+) {
   const lines = getLines("size-in-mib");
 
   for (const [size, frameworks] of results) {
@@ -53,7 +56,10 @@ export function saveThroughputVsDataSize(results: Map<number, Map<Framework, Mea
   writeDataToCsv("throughput-vs-data-size-" + name, lines);
 }
 
-export function saveSizeVsDuration(results: Map<number, Map<Framework, Measurement>>, name: string) {
+export function saveSizeVsDuration(
+  results: Map<number, Map<Framework, Measurement>>,
+  name: string
+) {
   const lines = getLines("size-in-mib");
 
   for (const [size, frameworks] of results) {

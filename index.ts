@@ -1,4 +1,4 @@
-import {Readable, Transform, TransformCallback, TransformOptions} from 'node:stream';
+import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
 
 /**
  * Options for the template replace stream.
@@ -24,9 +24,9 @@ export type TemplateReplaceStreamOptions = {
   endPattern: string | Buffer;
   /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
   streamOptions?: TransformOptions;
-}
+};
 
-export type StringContent = string | Buffer | Readable
+export type StringContent = string | Buffer | Readable;
 export type StringSource = StringContent | Promise<StringContent>;
 
 /** A function that resolves a variable name to its value */
@@ -38,23 +38,22 @@ export type VariableResolver = Map<string, StringSource> | VariableResolverFunct
 enum State {
   SEARCHING_START_PATTERN,
   PROCESSING_VARIABLE,
-  SEARCHING_END_PATTERN
+  SEARCHING_END_PATTERN,
 }
 
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   log: false,
   throwOnUnmatchedTemplate: false,
   maxVariableNameLength: 100,
-  startPattern: Buffer.from('{{', 'ascii'),
-  endPattern: Buffer.from('}}', 'ascii'),
-  streamOptions: undefined
-}
+  startPattern: Buffer.from("{{", "ascii"),
+  endPattern: Buffer.from("}}", "ascii"),
+  streamOptions: undefined,
+};
 
 /**
  * A stream that replaces template variables in a stream with values from a map or resolver function.
  */
 export class TemplateReplaceStream extends Transform {
-
   private _stack: Buffer<ArrayBufferLike> = Buffer.alloc(0);
   private _state = State.SEARCHING_START_PATTERN;
   private _matchCount = 0;
@@ -75,13 +74,13 @@ export class TemplateReplaceStream extends Transform {
    * @param options The options for the stream
    */
   constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
-    const _options = {...DEFAULT_OPTIONS, ...options};
+    const _options = { ...DEFAULT_OPTIONS, ...options };
     if (_options.maxVariableNameLength <= 0) {
-      throw new Error('The maximum variable name length must be greater than 0');
+      throw new Error("The maximum variable name length must be greater than 0");
     } else if (_options.startPattern.length === 0) {
-      throw new Error('The start pattern must not be empty');
+      throw new Error("The start pattern must not be empty");
     } else if (_options.endPattern.length === 0) {
-      throw new Error('The end pattern must not be empty');
+      throw new Error("The end pattern must not be empty");
     }
 
     super(_options.streamOptions);
@@ -92,12 +91,15 @@ export class TemplateReplaceStream extends Transform {
     this._resolveVariable = variables instanceof Map ? variables.get.bind(variables) : variables;
   }
 
-  async _transform(chunk: Buffer | string | object, encoding: BufferEncoding, callback: TransformCallback) {
-    if (typeof chunk === 'string') chunk = Buffer.from(chunk, encoding);
+  async _transform(
+    chunk: Buffer | string | object,
+    encoding: BufferEncoding,
+    callback: TransformCallback
+  ) {
+    if (typeof chunk === "string") chunk = Buffer.from(chunk, encoding);
 
     try {
       if (chunk instanceof Buffer) {
-
         // if there is text left from last iteration, prepend it to the chunk
         if (this._stack.length === 0) {
           this._stack = chunk;
@@ -116,7 +118,10 @@ export class TemplateReplaceStream extends Transform {
               break;
             case State.SEARCHING_END_PATTERN:
               if (this.findEndPattern()) {
-                const variableNameBuffer = this._stack.subarray(this._startPattern.length, this._stackIndex - this._endPattern.length);
+                const variableNameBuffer = this._stack.subarray(
+                  this._startPattern.length,
+                  this._stackIndex - this._endPattern.length
+                );
                 const value = await this.getValueOfVariable(variableNameBuffer);
                 if (value) {
                   this._stack = this._stack.subarray(this._stackIndex); // discard the template string
@@ -188,8 +193,9 @@ export class TemplateReplaceStream extends Transform {
 
       // not found within the maximum length
       this._state = State.SEARCHING_START_PATTERN;
-      if (this._options.throwOnUnmatchedTemplate) throw new Error('Variable name processing reached limit');
-      if (this._options.log) console.debug('Variable name processing reached limit, skipping');
+      if (this._options.throwOnUnmatchedTemplate)
+        throw new Error("Variable name processing reached limit");
+      if (this._options.log) console.debug("Variable name processing reached limit, skipping");
       this.releaseStack(this._stack.length);
       return; // no match
     }
@@ -245,7 +251,6 @@ export class TemplateReplaceStream extends Transform {
     this._stackIndex -= index;
   }
 
-
   /**
    * Gets the value of a variable from the map by its name.
    *
@@ -258,7 +263,8 @@ export class TemplateReplaceStream extends Transform {
     if (value instanceof Promise) value = await value;
 
     if (value === undefined) {
-      if (this._options.throwOnUnmatchedTemplate) throw new Error(`Variable "${variableName}" not found in the variable map`);
+      if (this._options.throwOnUnmatchedTemplate)
+        throw new Error(`Variable "${variableName}" not found in the variable map`);
       if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
     } else {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
@@ -284,7 +290,7 @@ export class TemplateReplaceStream extends Transform {
 
   private async writeStreamToOutput(stream: Readable) {
     for await (const chunk of stream) {
-      if (!this.push(chunk)) await new Promise<void>((resolve) => this.once('drain', resolve));
+      if (!this.push(chunk)) await new Promise<void>((resolve) => this.once("drain", resolve));
     }
   }
 
@@ -294,9 +300,9 @@ export class TemplateReplaceStream extends Transform {
 
   private handleUnknownChunkType(chunk: any) {
     if (this._options.throwOnUnmatchedTemplate) {
-      throw new Error('Cannot replace variables in non-string-link streams');
+      throw new Error("Cannot replace variables in non-string-link streams");
     } else if (this._options.log) {
-      console.warn('Received non-buffer chunk. Will not modify it.');
+      console.warn("Received non-buffer chunk. Will not modify it.");
     }
     this.push(chunk);
   }
