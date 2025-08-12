@@ -34,10 +34,10 @@ export class FixedLengthReadStream extends Readable {
 
   constructor(chunkSource: Buffer | string | BufferGenerator, byteLength: number, encoding: BufferEncoding = 'utf8') {
     super();
-    if (typeof chunkSource === 'function' || chunkSource instanceof Buffer) {
-      this._chunkSource = chunkSource;
-    } else {
+    if (typeof chunkSource === 'string') {
       this._chunkSource = Buffer.from(chunkSource, encoding);
+    } else {
+      this._chunkSource = chunkSource;
     }
     this._byteLength = byteLength;
   }

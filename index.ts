@@ -55,7 +55,7 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
  */
 export class TemplateReplaceStream extends Transform {
 
-  private _stack = Buffer.alloc(0);
+  private _stack: Buffer<ArrayBufferLike> = Buffer.alloc(0);
   private _state = State.SEARCHING_START_PATTERN;
   private _matchCount = 0;
   private _stackIndex = 0;
