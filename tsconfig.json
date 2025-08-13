@@ -1,6 +1,5 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
-  "include": ["index.ts", "tests/**/*.ts", "examples/**/*.ts"],
   "exclude": ["dist", "benchmarks"],
   "compilerOptions": {
     "paths": {

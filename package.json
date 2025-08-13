@@ -15,7 +15,8 @@
     "build:examples": "cd examples && npm ci",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run",
+    "test:build": "vitest run --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
