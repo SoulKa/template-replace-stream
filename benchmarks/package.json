@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "benchmarks",
   "version": "1.0.0",
   "description": "Benchmarks for the template-replace-stream module and comparable modules",
