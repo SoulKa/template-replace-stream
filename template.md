@@ -24,9 +24,9 @@ This module contains type definitions and also an `.mjs` file for maximum compat
 
 The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
 
-| 16.x | 18.x | 20.x | 22.x |
+| 16.x | 18.x | 20.x | 22.x | 24.x |
 | --- | --- | --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)   | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)   | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
 
