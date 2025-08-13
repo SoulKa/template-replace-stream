@@ -54,10 +54,10 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
  * A stream that replaces template variables in a stream with values from a map or resolver function.
  */
 export class TemplateReplaceStream extends Transform {
-  private _stack: Buffer<ArrayBufferLike> = Buffer.alloc(0);
-  private _state = State.SEARCHING_START_PATTERN;
-  private _matchCount = 0;
-  private _stackIndex = 0;
+  private _stack: Buffer = Buffer.alloc(0);
+  private _state: State = State.SEARCHING_START_PATTERN;
+  private _matchCount: number = 0;
+  private _stackIndex: number = 0;
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
