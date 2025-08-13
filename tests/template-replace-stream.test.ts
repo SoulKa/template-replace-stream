@@ -145,4 +145,34 @@ describe("TemplateReplaceStream", () => {
       'Variable "name" not found in the variable map'
     );
   });
+
+  it("should replace variables in a string using a variable map", async () => {
+    // Arrange
+    const templateString = "Hello, {{ name }}!";
+    const variableMap = new Map([["name", "World"]]);
+    const transformStream = new TemplateReplaceStream(variableMap);
+
+    // Act
+    const result = await streamToString(
+      new FixedChunkSizeReadStream(templateString, 1).pipe(transformStream)
+    );
+
+    // Assert
+    expect(result).toBe("Hello, World!");
+  });
+
+  it(":replaceStringAsync() should replace variables in a string", async () => {
+    // Arrange
+    const templateString = "{{ greeting }}, {{ name }}!";
+    const variableMap = new Map([
+      ["greeting", "Hello"],
+      ["name", "World"],
+    ]);
+
+    // Act
+    const result = await TemplateReplaceStream.replaceStringAsync(templateString, variableMap);
+
+    // Assert
+    expect(result).toBe("Hello, World!");
+  });
 });

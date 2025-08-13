@@ -91,6 +91,53 @@ export class TemplateReplaceStream extends Transform {
     this._resolveVariable = variables instanceof Map ? variables.get.bind(variables) : variables;
   }
 
+  /**
+   * Replaces template variables in a string-like source with values from a map or resolver function.
+   * Note that this holds the full output in memory, you should not use this on large input.
+   *
+   * @param input The input string, buffer, or stream
+   * @param variables The variables to replace
+   * @param options The options for the stream
+   * @returns A promise that resolves to the output buffer
+   */
+  public static async replaceAsync(
+    input: string | Buffer | Readable,
+    variables: VariableResolver,
+    options?: Partial<TemplateReplaceStreamOptions>
+  ) {
+    const stream = new TemplateReplaceStream(variables, options);
+    if (input instanceof Readable) {
+      input.pipe(stream);
+    } else {
+      stream.end(input);
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
+
+  /**
+   * Replaces template variables in a string-like source with values from a map or resolver function.
+   * Note that this holds the full output in memory, you should not use this on large input.
+   *
+   * @param input The input string, buffer, or stream
+   * @param variables The variables to replace
+   * @param options The options for the stream
+   * @returns A promise that resolves to the output string
+   */
+  public static async replaceStringAsync(
+    input: string | Buffer | Readable,
+    variables: VariableResolver,
+    options?: Partial<TemplateReplaceStreamOptions>
+  ) {
+    return (await this.replaceAsync(input, variables, options)).toString(
+      options?.streamOptions?.encoding
+    );
+  }
+
   async _transform(
     chunk: Buffer | string | object,
     encoding: BufferEncoding,
