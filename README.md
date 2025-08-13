@@ -218,8 +218,7 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 
 - Add `TemplateReplaceStream.replaceAsync()` that directly returns a `Promise<Buffer>` with the result
 - Add `TemplateReplaceStream.replaceStringAsync()` that directly returns a `Promise<string>` with the result
-- Drop support for Node.js 16
-- Add CI on Node.js 24
+- Drop support for Node.js 16 and 18 (EOL) and add support for 24
 
 ### 2.1.2
 
