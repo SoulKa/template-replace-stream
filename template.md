@@ -1,6 +1,7 @@
 # template-replace-stream
 
 [![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)
+[![codecov](https://codecov.io/github/SoulKa/template-replace-stream/graph/badge.svg?token=JFCFRHKVL3)](https://codecov.io/github/SoulKa/template-replace-stream)
 [![npm version](https://badge.fury.io/js/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 [![Downloads](https://img.shields.io/npm/dm/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 
@@ -23,9 +24,9 @@ This module contains type definitions and also an `.mjs` file for maximum compat
 
 The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
 
-| 16.x | 18.x | 20.x | 22.x |
+| 18.x | 20.x | 22.x | 24.x |
 | --- | --- | --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)   | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
 
@@ -107,11 +108,16 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
 
-### Latest
+### 2.2.0
 
-- Support `async` replacement value functions (`Promise<StringSource>` as return value)
+- Add `TemplateReplaceStream.replaceAsync()` that directly returns a `Promise<Buffer>` with the result
+- Add `TemplateReplaceStream.replaceStringAsync()` that directly returns a `Promise<string>` with the result
+- Drop support for Node.js 16
+- Add CI on Node.js 24
 
 ### 2.1.2
+
+- Support `async` replacement value functions (`Promise<StringSource>` as return value)
 - Add CI to repository
 - Update README
 

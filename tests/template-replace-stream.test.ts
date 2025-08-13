@@ -1,21 +1,59 @@
-import {Readable} from 'stream';
-import {TemplateReplaceStream} from 'template-replace-stream';
-import {describe, expect, it} from "@jest/globals";
+import { Readable } from "stream";
+import { TemplateReplaceStream } from "template-replace-stream";
+import { describe, expect, it } from "vitest";
 import {
   consumeStream,
   DEFAULT_CHUNK_SIZE,
   FixedChunkSizeReadStream,
   FixedLengthReadStream,
   getChunk,
-  streamToString
+  streamToString,
 } from "./stream";
 
+describe("TemplateReplaceStream", () => {
+  it("should throw if maxVariableNameLength is 0", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          maxVariableNameLength: 0,
+        })
+    ).toThrowError("The maximum variable name length must be greater than 0");
+  });
 
-describe('TemplateReplaceStream', () => {
-  it('should replace variables in a stream', async () => {
+  it("should throw if maxVariableNameLength is negative", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          maxVariableNameLength: -5,
+        })
+    ).toThrowError("The maximum variable name length must be greater than 0");
+  });
+
+  it("should throw if startPattern is empty", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          startPattern: "",
+        })
+    ).toThrowError("The start pattern must not be empty");
+  });
+
+  it("should throw if endPattern is empty", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          endPattern: "",
+        })
+    ).toThrowError("The end pattern must not be empty");
+  });
+
+  it("should replace variables in a stream", async () => {
     // Arrange
-    const templateString = '{{ greeting }}, {{ name }}!';
-    const variableMap = new Map([['greeting', 'Hello'], ['name', 'World']]);
+    const templateString = "{{ greeting }}, {{ name }}!";
+    const variableMap = new Map([
+      ["greeting", "Hello"],
+      ["name", "World"],
+    ]);
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(variableMap);
 
@@ -23,31 +61,37 @@ describe('TemplateReplaceStream', () => {
     const result = await streamToString(readable.pipe(transformStream));
 
     // Assert
-    expect(result).toBe('Hello, World!');
+    expect(result).toBe("Hello, World!");
   });
 
-  it('should replace variables in a large stream', async () => {
+  it("should replace variables in a large stream", async () => {
     // Arrange
     const streamLength = 25 * 1024 * 1024;
-    const variableName = 'name';
+    const variableName = "name";
     const template = `{{ ${variableName} }}`;
-    const replacement = 'you';
+    const replacement = "you";
     const expectedStart = `Hello, ${replacement}!`;
     const variableMap = new Map([[variableName, replacement]]);
-    const readable: Readable = new FixedLengthReadStream(getChunk(expectedStart.replace(replacement, template)), streamLength);
+    const readable: Readable = new FixedLengthReadStream(
+      getChunk(expectedStart.replace(replacement, template)),
+      streamLength
+    );
     const transformStream = new TemplateReplaceStream(variableMap);
 
     // Act
     const result = await streamToString(readable.pipe(transformStream));
 
     // Assert
-    expect(result.length).toBe(streamLength - Math.ceil(streamLength / DEFAULT_CHUNK_SIZE) * (template.length - replacement.length));
+    expect(result.length).toBe(
+      streamLength -
+        Math.ceil(streamLength / DEFAULT_CHUNK_SIZE) * (template.length - replacement.length)
+    );
     expect(result.substring(0, expectedStart.length)).toBe(expectedStart);
   });
 
-  it('should not modify the stream if there are no template variables', async () => {
+  it("should not modify the stream if there are no template variables", async () => {
     // Arrange
-    const templateString = 'Hello, World!';
+    const templateString = "Hello, World!";
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(new Map());
 
@@ -58,9 +102,9 @@ describe('TemplateReplaceStream', () => {
     expect(result).toBe(templateString);
   });
 
-  it('should not modify the string if the template variables are unresolved', async () => {
+  it("should not modify the string if the template variables are unresolved", async () => {
     // Arrange
-    const templateString = 'Hello, {{ name }}!';
+    const templateString = "Hello, {{ name }}!";
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
     const transformStream = new TemplateReplaceStream(new Map());
 
@@ -71,11 +115,11 @@ describe('TemplateReplaceStream', () => {
     expect(result).toBe(templateString);
   });
 
-  it('should replace variables in a stream using another stream as replace value source', async () => {
+  it("should replace variables in a stream using another stream as replace value source", async () => {
     // Arrange
-    const templateString = 'Hello, {{ name }}!';
-    const replaceValueSourceStream = new FixedChunkSizeReadStream('Universe', 1);
-    const variableMap = new Map([['name', replaceValueSourceStream]]);
+    const templateString = "Hello, {{ name }}!";
+    const replaceValueSourceStream = new FixedChunkSizeReadStream("Universe", 1);
+    const variableMap = new Map([["name", replaceValueSourceStream]]);
     const transformStream = new TemplateReplaceStream(variableMap);
     const templateStream = new FixedChunkSizeReadStream(templateString);
 
@@ -83,15 +127,15 @@ describe('TemplateReplaceStream', () => {
     const result = await streamToString(templateStream.pipe(transformStream));
 
     // Assert
-    expect(result).toBe('Hello, Universe!');
+    expect(result).toBe("Hello, Universe!");
   });
 
-  it('should replace a small string by a large stream content', async () => {
+  it("should replace a small string by a large stream content", async () => {
     // Arrange
     const valueStreamLength = 25 * 1e6;
-    const sourceStream = new FixedChunkSizeReadStream('{{ t }}');
+    const sourceStream = new FixedChunkSizeReadStream("{{ t }}");
     const valueStream = new FixedLengthReadStream(getChunk(), valueStreamLength);
-    const replaceStream = new TemplateReplaceStream(new Map([['t', valueStream]]));
+    const replaceStream = new TemplateReplaceStream(new Map([["t", valueStream]]));
 
     // Act
     const bytesRead = await consumeStream(sourceStream.pipe(replaceStream));
@@ -100,37 +144,87 @@ describe('TemplateReplaceStream', () => {
     expect(bytesRead).toBe(valueStreamLength);
   });
 
-  it('should replace variables in a stream using other streams as replace value source', async () => {
+  it("should replace variables in a stream using other streams as replace value source", async () => {
     // Arrange
-    const templateStream = new FixedChunkSizeReadStream('{{ one }} {{ two }} {{ three }}');
-    const transformStream = new TemplateReplaceStream((key => new FixedChunkSizeReadStream(key)));
+    const templateStream = new FixedChunkSizeReadStream("{{ one }} {{ two }} {{ three }}");
+    const transformStream = new TemplateReplaceStream((key) => new FixedChunkSizeReadStream(key));
 
     // Act
     const result = await streamToString(templateStream.pipe(transformStream));
 
     // Assert
-    expect(result).toBe('one two three');
+    expect(result).toBe("one two three");
   });
 
-  it('should replace variables in a single character stream chunks using other streams as replace value source', async () => {
+  it("should replace variables in a single character stream chunks using other streams as replace value source", async () => {
     // Arrange
-    const templateStream = new FixedChunkSizeReadStream('{{ one }} {{ two }} {{ three }}', 1);
-    const transformStream = new TemplateReplaceStream((key => new FixedChunkSizeReadStream(key)));
+    const templateStream = new FixedChunkSizeReadStream("{{ one }} {{ two }} {{ three }}", 1);
+    const transformStream = new TemplateReplaceStream((key) => new FixedChunkSizeReadStream(key));
 
     // Act
     const result = await streamToString(templateStream.pipe(transformStream));
 
     // Assert
-    expect(result).toBe('one two three');
+    expect(result).toBe("one two three");
   });
 
-  it('should throw an error if a template variable is not found', async () => {
+  it("should throw an error if a template variable is not found", async () => {
     // Arrange
-    const templateString = 'Hello, {{ name }}!';
+    const templateString = "Hello, {{ name }}!";
     const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
-    const transformStream = new TemplateReplaceStream(new Map(), {throwOnUnmatchedTemplate: true});
+    const transformStream = new TemplateReplaceStream(new Map(), {
+      throwOnUnmatchedTemplate: true,
+    });
 
     // Act & Assert
-    await expect(streamToString(readable.pipe(transformStream))).rejects.toThrow('Variable "name" not found in the variable map');
+    await expect(streamToString(readable.pipe(transformStream))).rejects.toThrow(
+      'Variable "name" not found in the variable map'
+    );
+  });
+
+  it("should replace variables in a string using a variable map", async () => {
+    // Arrange
+    const templateString = "Hello, {{ name }}!";
+    const variableMap = new Map([["name", "World"]]);
+    const transformStream = new TemplateReplaceStream(variableMap);
+
+    // Act
+    const result = await streamToString(
+      new FixedChunkSizeReadStream(templateString, 1).pipe(transformStream)
+    );
+
+    // Assert
+    expect(result).toBe("Hello, World!");
+  });
+
+  it(":replaceAsync() should replace variables in a stream", async () => {
+    // Arrange
+    const templateString = "Hello, {{ name }}!";
+    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const variableMap = new Map([
+      ["greeting", "Hello"],
+      ["name", "World"],
+    ]);
+
+    // Act
+    const result = await TemplateReplaceStream.replaceStringAsync(readable, variableMap);
+
+    // Assert
+    expect(result).toBe("Hello, World!");
+  });
+
+  it(":replaceStringAsync() should replace variables in a string", async () => {
+    // Arrange
+    const templateString = "{{ greeting }}, {{ name }}!";
+    const variableMap = new Map([
+      ["greeting", "Hello"],
+      ["name", "World"],
+    ]);
+
+    // Act
+    const result = await TemplateReplaceStream.replaceStringAsync(templateString, variableMap);
+
+    // Assert
+    expect(result).toBe("Hello, World!");
   });
 });

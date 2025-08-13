@@ -1,4 +1,4 @@
-import {defineConfig} from "tsup";
+import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: ["index.ts"],
@@ -6,5 +6,5 @@ export default defineConfig({
   dts: true,
   splitting: false,
   sourcemap: true,
-  clean: true
+  clean: true,
 });

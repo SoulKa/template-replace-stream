@@ -1,6 +1,6 @@
 {
   "name": "template-replace-stream",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "A high performance template replace stream working on binary or string streams",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -10,11 +10,15 @@
   ],
   "scripts": {
     "build": "tsup && (npm run build:readme)",
-    "build:all": "(npm run build:examples) && (npm run build:tests) && (npm run build)",
-    "build:readme": "cd examples && ts-node generate-readme.ts",
-    "build:tests": "cd tests && npm install",
-    "build:examples": "cd examples && npm install",
-    "test": "cd tests && npm test"
+    "build:all": "(npm run build:examples) && (npm run build)",
+    "build:readme": "cd examples && (npm run build:readme)",
+    "build:examples": "cd examples && npm ci",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ci": "vitest run --coverage",
+    "test:build": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -42,8 +46,19 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
-    "tsup": "^8.0.2",
-    "typescript": "^5.4.5"
+    "@tsconfig/node24": "^24.0.1",
+    "@types/node": "^24.2.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "semi": true,
+    "singleQuote": false,
+    "trailingComma": "es5",
+    "arrowParens": "always"
   }
 }

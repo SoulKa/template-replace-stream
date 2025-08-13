@@ -1,4 +1,4 @@
-import {TemplateReplaceStream} from "template-replace-stream";
+import { TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 

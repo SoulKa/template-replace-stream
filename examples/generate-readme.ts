@@ -1,8 +1,8 @@
-import {StringSource, TemplateReplaceStream} from "template-replace-stream";
+import { StringSource, TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 import sloc from "sloc";
-import {Project, ts} from "ts-morph";
+import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(__dirname, "..");
 const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
@@ -14,7 +14,9 @@ const loc = codeInfo.total - codeInfo.comment - codeInfo.empty;
 const optionsDefinition = extractTypeDefinition("TemplateReplaceStreamOptions", sourceFilePath);
 
 // the map of example files and their read streams and further template variables
-const templateMap = new Map<string, StringSource>(exampleFiles.map((file) => [file, openExampleStream(file)]));
+const templateMap = new Map<string, StringSource>(
+  exampleFiles.map((file) => [file, openExampleStream(file)])
+);
 templateMap.set("loc", loc.toString());
 templateMap.set("options-definition", optionsDefinition);
 
@@ -45,6 +47,6 @@ function extractTypeDefinition(typeName: string, filePath: string) {
   const sourceFile = new Project().addSourceFileAtPath(filePath);
   const typeNode = sourceFile.getTypeAlias(typeName)?.compilerNode;
   if (!typeNode) throw new Error(`Type alias ${typeName} not found.`);
-  const printer = ts.createPrinter({removeComments: false});
+  const printer = ts.createPrinter({ removeComments: false });
   return printer.printNode(ts.EmitHint.Unspecified, typeNode, sourceFile.compilerNode);
 }
