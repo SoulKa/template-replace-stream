@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it } from "vitest";
 import { FixedChunkSizeReadStream } from "../tests/stream";
 
 async function stringStreamToString(stream: Readable) {

@@ -10,11 +10,12 @@
   ],
   "scripts": {
     "build": "tsup && (npm run build:readme)",
-    "build:all": "(npm run build:examples) && (npm run build:tests) && (npm run build)",
+    "build:all": "(npm run build:examples) && (npm run build)",
     "build:readme": "cd examples && (npm run build:readme)",
-    "build:tests": "cd tests && npm ci",
     "build:examples": "cd examples && npm ci",
-    "test": "cd tests && (npm run test)",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -46,9 +47,11 @@
   "devDependencies": {
     "@tsconfig/node24": "^24.0.1",
     "@types/node": "^24.2.1",
+    "@vitest/coverage-v8": "^3.2.4",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "prettier": {
     "printWidth": 100,

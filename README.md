@@ -221,7 +221,6 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 - Drop support for Node.js 16
 - Add CI on Node.js 24
 
-
 ### 2.1.2
 
 - Support `async` replacement value functions (`Promise<StringSource>` as return value)
