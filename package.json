@@ -1,6 +1,6 @@
 {
   "name": "template-replace-stream",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "A high performance template replace stream working on binary or string streams",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -11,10 +11,10 @@
   "scripts": {
     "build": "tsup && (npm run build:readme)",
     "build:all": "(npm run build:examples) && (npm run build:tests) && (npm run build)",
-    "build:readme": "cd examples && ts-node generate-readme.ts",
-    "build:tests": "cd tests && npm install",
-    "build:examples": "cd examples && npm install",
-    "test": "cd tests && npm run test",
+    "build:readme": "cd examples && (npm run build:readme)",
+    "build:tests": "cd tests && npm ci",
+    "build:examples": "cd examples && npm ci",
+    "test": "cd tests && (npm run test)",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -45,6 +45,7 @@
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
     "@tsconfig/node24": "^24.0.1",
+    "@types/node": "^24.2.1",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2"

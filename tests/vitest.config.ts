@@ -1,8 +1,5 @@
 import { defineConfig } from "vitest/config";
-import path from "path";
-
-// If BUILD_DIST is set (e.g. in CI after building root project) resolve to dist, otherwise to source root.
-const useDist = Boolean(process.env.BUILD_DIST);
+import path from "node:path";
 
 export default defineConfig({
   test: {
@@ -11,7 +8,7 @@ export default defineConfig({
       provider: "v8",
     },
     alias: {
-      "template-replace-stream": path.resolve(__dirname, useDist ? "../dist" : ".."),
+      "template-replace-stream": path.resolve(__dirname, process.env.MODULE_DIR ?? ".."),
     },
   },
 });
