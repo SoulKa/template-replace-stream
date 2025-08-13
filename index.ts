@@ -1,4 +1,4 @@
-import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
+import { once, Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
 
 /**
  * Options for the template replace stream.
@@ -133,9 +133,7 @@ export class TemplateReplaceStream extends Transform {
     variables: VariableResolver,
     options?: Partial<TemplateReplaceStreamOptions>
   ) {
-    return (await this.replaceAsync(input, variables, options)).toString(
-      options?.streamOptions?.encoding
-    );
+    return (await this.replaceAsync(input, variables, options)).toString();
   }
 
   async _transform(
@@ -212,7 +210,7 @@ export class TemplateReplaceStream extends Transform {
     }
 
     // continue matching the start pattern
-    for (; this._matchCount < this._startPattern.length; this._matchCount++ & this._stackIndex++) {
+    for (; this._matchCount < this._startPattern.length; this._matchCount++, this._stackIndex++) {
       if (this._stackIndex >= this._stack.length) return; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._startPattern[this._matchCount]) {
         this._matchCount = 0;
@@ -267,7 +265,7 @@ export class TemplateReplaceStream extends Transform {
    */
   private findEndPattern() {
     let match = true;
-    for (; this._matchCount < this._endPattern.length; this._matchCount++ & this._stackIndex++) {
+    for (; this._matchCount < this._endPattern.length; this._matchCount++, this._stackIndex++) {
       if (this._stackIndex >= this._stack.length) return false; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._endPattern[this._matchCount]) {
         this.releaseStack(this._stackIndex);
@@ -337,7 +335,7 @@ export class TemplateReplaceStream extends Transform {
 
   private async writeStreamToOutput(stream: Readable) {
     for await (const chunk of stream) {
-      if (!this.push(chunk)) await new Promise<void>((resolve) => this.once("drain", resolve));
+      if (!this.push(chunk)) await once(this, "drain");
     }
   }
 

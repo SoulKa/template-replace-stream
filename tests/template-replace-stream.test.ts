@@ -11,6 +11,42 @@ import {
 } from "./stream";
 
 describe("TemplateReplaceStream", () => {
+  it("should throw if maxVariableNameLength is 0", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          maxVariableNameLength: 0,
+        })
+    ).toThrowError("The maximum variable name length must be greater than 0");
+  });
+
+  it("should throw if maxVariableNameLength is negative", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          maxVariableNameLength: -5,
+        })
+    ).toThrowError("The maximum variable name length must be greater than 0");
+  });
+
+  it("should throw if startPattern is empty", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          startPattern: "",
+        })
+    ).toThrowError("The start pattern must not be empty");
+  });
+
+  it("should throw if endPattern is empty", () => {
+    expect(
+      () =>
+        new TemplateReplaceStream(new Map(), {
+          endPattern: "",
+        })
+    ).toThrowError("The end pattern must not be empty");
+  });
+
   it("should replace variables in a stream", async () => {
     // Arrange
     const templateString = "{{ greeting }}, {{ name }}!";
@@ -156,6 +192,22 @@ describe("TemplateReplaceStream", () => {
     const result = await streamToString(
       new FixedChunkSizeReadStream(templateString, 1).pipe(transformStream)
     );
+
+    // Assert
+    expect(result).toBe("Hello, World!");
+  });
+
+  it(":replaceAsync() should replace variables in a stream", async () => {
+    // Arrange
+    const templateString = "Hello, {{ name }}!";
+    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const variableMap = new Map([
+      ["greeting", "Hello"],
+      ["name", "World"],
+    ]);
+
+    // Act
+    const result = await TemplateReplaceStream.replaceStringAsync(readable, variableMap);
 
     // Assert
     expect(result).toBe("Hello, World!");
