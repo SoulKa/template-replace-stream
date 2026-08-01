@@ -1,8 +1,8 @@
 import { Framework, FRAMEWORKS, Measurement } from "./types";
 import fs from "node:fs";
-import path from "path";
+import path from "node:path";
 
-const plotDir = path.join(__dirname, "plots");
+const plotDir = path.join(import.meta.dirname, "plots");
 if (!fs.existsSync(plotDir)) {
   fs.mkdirSync(plotDir);
 }
