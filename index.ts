@@ -8,8 +8,9 @@ export type TemplateReplaceStreamOptions = {
   /** Default: `false`. If true, the stream creates logs on debug level */
   log: boolean;
   /**
-   * Default: `false`. If true, the stream throws an error when a template variable has no
-   * replacement value. Takes precedence over `removeUnmatchedTemplate`.
+   * Default: `false`. If `true`, an unmatched template variable — one that has no replacement value —
+   * makes the stream fail with an {@link UnmatchedVariableError} (emitted on the stream, or thrown by
+   * the `replace*Async` helpers) instead of leaving the template untouched in the output.
    */
   throwOnUnmatchedTemplate: boolean;
   /**
@@ -103,6 +104,14 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
 
 /**
  * A stream that replaces template variables in a stream with values from a map or resolver function.
+ *
+ * Every error this stream raises is a {@link TemplateReplaceStreamError} (or its
+ * {@link UnmatchedVariableError} subclass) carrying a stable {@link TemplateReplaceStreamErrorCode}.
+ * Invalid options are thrown synchronously from the constructor (`ERR_INVALID_OPTION`). When
+ * {@link TemplateReplaceStreamOptions.throwOnUnmatchedTemplate} is enabled, the stream also fails on a
+ * variable name exceeding {@link TemplateReplaceStreamOptions.maxVariableNameLength}
+ * (`ERR_VARIABLE_NAME_TOO_LONG`) and on a non-string/{@link Buffer} chunk, in addition to the
+ * unmatched-variable case described on that option.
  */
 export class TemplateReplaceStream extends Transform {
   private _stack: Buffer = Buffer.alloc(0);
