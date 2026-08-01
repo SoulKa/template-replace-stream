@@ -341,7 +341,11 @@ export class TemplateReplaceStream extends Transform {
     for (; this._matchCount < this._endPattern.length; this._matchCount++, this._stackIndex++) {
       if (this._stackIndex >= this._stack.length) return false; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._endPattern[this._matchCount]) {
-        // a false end pattern: keep the start pattern and look for the real end within the variable
+        // A false end pattern. Keep the start pattern and look for the real end within the variable.
+        // Rewind to one byte past where this partial match began (its first byte is at
+        // `_stackIndex - _matchCount`) so an overlapping end that starts inside it — possible when
+        // the end pattern's first bytes repeat — is not skipped.
+        this._stackIndex -= this._matchCount - 1;
         this._matchCount = 1;
         this._state = State.PROCESSING_VARIABLE;
         return false; // no match

@@ -299,15 +299,18 @@ describe("TemplateReplaceStream with varying start/end pattern lengths", () => {
       expect(result).toBe("Hello, World!");
     });
 
-    it.each(CHUNK_SIZES)("leaves an unmatched variable untouched (chunk size %i)", async (chunkSize) => {
-      const template = `Hello, ${start} name ${end}!`;
-      const readable = new FixedChunkSizeReadStream(template, chunkSize);
-      const transformStream = new TemplateReplaceStream(new Map(), options);
+    it.each(CHUNK_SIZES)(
+      "leaves an unmatched variable untouched (chunk size %i)",
+      async (chunkSize) => {
+        const template = `Hello, ${start} name ${end}!`;
+        const readable = new FixedChunkSizeReadStream(template, chunkSize);
+        const transformStream = new TemplateReplaceStream(new Map(), options);
 
-      const result = await streamToString(readable.pipe(transformStream));
+        const result = await streamToString(readable.pipe(transformStream));
 
-      expect(result).toBe(template);
-    });
+        expect(result).toBe(template);
+      }
+    );
 
     it.each(CHUNK_SIZES)(
       "removes the template when the value is an empty string (chunk size %i)",
@@ -342,5 +345,40 @@ describe("TemplateReplaceStream with varying start/end pattern lengths", () => {
         }
       );
     }
+  });
+
+  // Self-overlapping end pattern — one whose first two bytes are equal, e.g. "]]>". A partial end
+  // match must not skip the byte where the *real* end could begin: in "[[[a]]]>" the "]]" at offset
+  // 4 fails on its third byte, but the genuine "]]>" starts one byte later at offset 5. The variable
+  // name (trimmed) is "a]".
+  it("handles a self-overlapping end pattern (overlapping partial match)", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "[[[a]]]>",
+      new Map([["a]", "X"]]),
+      { startPattern: "[[[", endPattern: "]]>" }
+    );
+    expect(result).toBe("X");
+  });
+
+  it("handles a self-overlapping end pattern across single-byte chunks", async () => {
+    const readable = new FixedChunkSizeReadStream("[[[a]]]>", 1);
+    const transformStream = new TemplateReplaceStream(new Map([["a]", "X"]]), {
+      startPattern: "[[[",
+      endPattern: "]]>",
+    });
+    const result = await streamToString(readable.pipe(transformStream));
+    expect(result).toBe("X");
+  });
+
+  // Repeated-prefix end pattern "aab": in "[[[x.aaab" the run "aaa" produces a partial "aa" that
+  // fails on its third byte, and the real end "aab" starts at the next 'a'. The variable name is
+  // everything up to that end, i.e. "x.a".
+  it("handles overlapping partial matches for a repeated-prefix end pattern", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "[[[x.aaab",
+      new Map([["x.a", "X"]]),
+      { startPattern: "[[[", endPattern: "aab" }
+    );
+    expect(result).toBe("X");
   });
 });
