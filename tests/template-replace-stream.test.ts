@@ -273,3 +273,74 @@ describe("TemplateReplaceStream", () => {
     expect(result).toBe("Hello, World!");
   });
 });
+
+describe("TemplateReplaceStream with varying start/end pattern lengths", () => {
+  // Each config uses distinct first bytes for start and end so the two patterns never collide.
+  const PATTERN_CONFIGS = [
+    { label: "single-byte", start: "[", end: "]" },
+    { label: "two-byte (default)", start: "{{", end: "}}" },
+    { label: "three-byte", start: "<<<", end: ">>>" },
+    { label: "asymmetric start=1/end=2", start: "@", end: "##" },
+    { label: "asymmetric start=3/end=1", start: "{{{", end: "%" },
+  ];
+  // 1 byte forces the state machine across a chunk boundary between every byte.
+  const CHUNK_SIZES = [1, 4, DEFAULT_CHUNK_SIZE];
+
+  describe.each(PATTERN_CONFIGS)("$label patterns ($start … $end)", ({ start, end }) => {
+    const options = { startPattern: start, endPattern: end };
+
+    it.each(CHUNK_SIZES)("replaces a simple variable (chunk size %i)", async (chunkSize) => {
+      const template = `Hello, ${start} name ${end}!`;
+      const readable = new FixedChunkSizeReadStream(template, chunkSize);
+      const transformStream = new TemplateReplaceStream(new Map([["name", "World"]]), options);
+
+      const result = await streamToString(readable.pipe(transformStream));
+
+      expect(result).toBe("Hello, World!");
+    });
+
+    it.each(CHUNK_SIZES)("leaves an unmatched variable untouched (chunk size %i)", async (chunkSize) => {
+      const template = `Hello, ${start} name ${end}!`;
+      const readable = new FixedChunkSizeReadStream(template, chunkSize);
+      const transformStream = new TemplateReplaceStream(new Map(), options);
+
+      const result = await streamToString(readable.pipe(transformStream));
+
+      expect(result).toBe(template);
+    });
+
+    it.each(CHUNK_SIZES)(
+      "removes the template when the value is an empty string (chunk size %i)",
+      async (chunkSize) => {
+        const template = `Hello, ${start} name ${end}!`;
+        const readable = new FixedChunkSizeReadStream(template, chunkSize);
+        const transformStream = new TemplateReplaceStream(new Map([["name", ""]]), options);
+
+        const result = await streamToString(readable.pipe(transformStream));
+
+        expect(result).toBe("Hello, !");
+      }
+    );
+
+    // A partial end match is only possible for a multi-byte end pattern; a single-byte end
+    // pattern can never appear inside a variable name.
+    if (end.length >= 2) {
+      const variableName = `a${end[0]}b`;
+      it.each(CHUNK_SIZES)(
+        `replaces a variable whose name contains the end pattern's first byte "${end[0]}" (chunk size %i)`,
+        async (chunkSize) => {
+          const template = `Hello, ${start} ${variableName} ${end}!`;
+          const readable = new FixedChunkSizeReadStream(template, chunkSize);
+          const transformStream = new TemplateReplaceStream(
+            new Map([[variableName, "World"]]),
+            options
+          );
+
+          const result = await streamToString(readable.pipe(transformStream));
+
+          expect(result).toBe("Hello, World!");
+        }
+      );
+    }
+  });
+});

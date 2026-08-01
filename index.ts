@@ -338,18 +338,18 @@ export class TemplateReplaceStream extends Transform {
    * a match when continuing the search with the next chunk.
    */
   private findEndPattern() {
-    let match = true;
     for (; this._matchCount < this._endPattern.length; this._matchCount++, this._stackIndex++) {
       if (this._stackIndex >= this._stack.length) return false; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._endPattern[this._matchCount]) {
-        this.releaseStack(this._stackIndex);
-        match = false; // no match
-        break;
+        // a false end pattern: keep the start pattern and look for the real end within the variable
+        this._matchCount = 1;
+        this._state = State.PROCESSING_VARIABLE;
+        return false; // no match
       }
     }
     this._matchCount = 0;
     this._state = State.SEARCHING_START_PATTERN;
-    return match;
+    return true;
   }
 
   /**
