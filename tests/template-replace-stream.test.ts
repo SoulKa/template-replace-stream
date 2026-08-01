@@ -1,5 +1,9 @@
 import { Readable } from "stream";
-import { TemplateReplaceStream } from "template-replace-stream";
+import {
+  TemplateReplaceStream,
+  TemplateReplaceStreamError,
+  UnmatchedVariableError,
+} from "template-replace-stream";
 import { describe, expect, it } from "vitest";
 import {
   consumeStream,
@@ -45,6 +49,34 @@ describe("TemplateReplaceStream", () => {
           endPattern: "",
         })
     ).toThrowError("The end pattern must not be empty");
+  });
+
+  it("should throw a TemplateReplaceStreamError with code ERR_INVALID_OPTION for invalid options", () => {
+    let error: unknown;
+    try {
+      new TemplateReplaceStream(new Map(), { maxVariableNameLength: 0 });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect((error as TemplateReplaceStreamError).code).toBe("ERR_INVALID_OPTION");
+  });
+
+  it("should throw an UnmatchedVariableError exposing the variable name and code when throwOnUnmatchedTemplate is set", async () => {
+    // Arrange
+    const readable = new FixedChunkSizeReadStream("{{ missing }}", 1);
+    const transformStream = new TemplateReplaceStream(new Map(), {
+      throwOnUnmatchedTemplate: true,
+    });
+
+    // Act
+    const error = await streamToString(readable.pipe(transformStream)).catch((e) => e);
+
+    // Assert
+    expect(error).toBeInstanceOf(UnmatchedVariableError);
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect(error.variableName).toBe("missing");
+    expect(error.code).toBe("ERR_UNMATCHED_VARIABLE");
   });
 
   it("should replace variables in a stream", async () => {

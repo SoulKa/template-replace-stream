@@ -36,6 +36,56 @@ export type VariableResolverFunction = (variable: string) => StringSource | unde
 /** A map or function that resolves variable names to their values */
 export type VariableResolver = Map<string, StringSource> | VariableResolverFunction;
 
+/**
+ * The stable error codes set on {@link TemplateReplaceStreamError.code}. Prefer matching on these over
+ * the (human-readable) error message, and over `instanceof` when errors may cross package-copy or
+ * serialization boundaries.
+ *
+ * - `ERR_INVALID_OPTION`: an invalid option was passed to the {@link TemplateReplaceStream} constructor.
+ * - `ERR_VARIABLE_NAME_TOO_LONG`: a template variable name exceeded {@link TemplateReplaceStreamOptions.maxVariableNameLength}.
+ * - `ERR_UNMATCHED_VARIABLE`: a template variable had no replacement value (see {@link UnmatchedVariableError}).
+ */
+export type TemplateReplaceStreamErrorCode =
+  "ERR_INVALID_OPTION" | "ERR_VARIABLE_NAME_TOO_LONG" | "ERR_UNMATCHED_VARIABLE";
+
+/**
+ * The error thrown by the {@link TemplateReplaceStream} for all errors it raises itself, e.g. invalid
+ * options passed to the constructor or an unmatched template variable when
+ * {@link TemplateReplaceStreamOptions.throwOnUnmatchedTemplate} is enabled. Use `instanceof` or the
+ * stable {@link TemplateReplaceStreamError.code} to distinguish it from other errors emitted on the
+ * stream. The `code` is only `undefined` when wrapping a foreign non-`Error` value thrown downstream.
+ */
+export class TemplateReplaceStreamError extends Error {
+  constructor(
+    message: string,
+    readonly code?: TemplateReplaceStreamErrorCode,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = "TemplateReplaceStreamError";
+  }
+}
+
+/**
+ * The error thrown when a template variable has no replacement value and
+ * {@link TemplateReplaceStreamOptions.throwOnUnmatchedTemplate} is enabled. The name of the
+ * unmatched variable is available via {@link UnmatchedVariableError.variableName}, and its
+ * {@link TemplateReplaceStreamError.code} is always `"ERR_UNMATCHED_VARIABLE"`.
+ */
+export class UnmatchedVariableError extends TemplateReplaceStreamError {
+  constructor(
+    readonly variableName: string,
+    options?: ErrorOptions
+  ) {
+    super(
+      `Variable "${variableName}" not found in the variable map`,
+      "ERR_UNMATCHED_VARIABLE",
+      options
+    );
+    this.name = "UnmatchedVariableError";
+  }
+}
+
 enum State {
   SEARCHING_START_PATTERN,
   PROCESSING_VARIABLE,
@@ -77,11 +127,20 @@ export class TemplateReplaceStream extends Transform {
   constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
     const _options = { ...DEFAULT_OPTIONS, ...options };
     if (_options.maxVariableNameLength <= 0) {
-      throw new Error("The maximum variable name length must be greater than 0");
+      throw new TemplateReplaceStreamError(
+        "The maximum variable name length must be greater than 0",
+        "ERR_INVALID_OPTION"
+      );
     } else if (_options.startPattern.length === 0) {
-      throw new Error("The start pattern must not be empty");
+      throw new TemplateReplaceStreamError(
+        "The start pattern must not be empty",
+        "ERR_INVALID_OPTION"
+      );
     } else if (_options.endPattern.length === 0) {
-      throw new Error("The end pattern must not be empty");
+      throw new TemplateReplaceStreamError(
+        "The end pattern must not be empty",
+        "ERR_INVALID_OPTION"
+      );
     }
 
     super(_options.streamOptions);
@@ -184,7 +243,9 @@ export class TemplateReplaceStream extends Transform {
         this.handleUnknownChunkType(chunk);
       }
     } catch (e) {
-      callback(e instanceof Error ? e : new Error(`${e}`));
+      callback(
+        e instanceof Error ? e : new TemplateReplaceStreamError(`${e}`, undefined, { cause: e })
+      );
       return;
     }
 
@@ -240,7 +301,10 @@ export class TemplateReplaceStream extends Transform {
       // not found within the maximum length
       this._state = State.SEARCHING_START_PATTERN;
       if (this._options.throwOnUnmatchedTemplate)
-        throw new Error("Variable name processing reached limit");
+        throw new TemplateReplaceStreamError(
+          "Variable name processing reached limit",
+          "ERR_VARIABLE_NAME_TOO_LONG"
+        );
       if (this._options.log) console.debug("Variable name processing reached limit, skipping");
       this.releaseStack(this._stack.length);
       return; // no match
@@ -309,8 +373,7 @@ export class TemplateReplaceStream extends Transform {
     if (value instanceof Promise) value = await value;
 
     if (value === undefined) {
-      if (this._options.throwOnUnmatchedTemplate)
-        throw new Error(`Variable "${variableName}" not found in the variable map`);
+      if (this._options.throwOnUnmatchedTemplate) throw new UnmatchedVariableError(variableName);
       if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
     } else {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
@@ -346,7 +409,7 @@ export class TemplateReplaceStream extends Transform {
 
   private handleUnknownChunkType(chunk: any) {
     if (this._options.throwOnUnmatchedTemplate) {
-      throw new Error("Cannot replace variables in non-string-link streams");
+      throw new TemplateReplaceStreamError("Cannot replace variables in non-string-link streams");
     } else if (this._options.log) {
       console.warn("Received non-buffer chunk. Will not modify it.");
     }
