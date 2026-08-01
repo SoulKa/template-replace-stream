@@ -1,4 +1,5 @@
-import { once, Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
+import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
+import { once } from "node:events";
 
 /**
  * Options for the template replace stream.

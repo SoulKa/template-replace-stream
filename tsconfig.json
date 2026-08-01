@@ -2,6 +2,7 @@
   "extends": "@tsconfig/node24/tsconfig.json",
   "exclude": ["dist", "benchmarks"],
   "compilerOptions": {
+    "types": ["node"],
     "paths": {
       "template-replace-stream": ["."]
     }
