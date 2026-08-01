@@ -79,6 +79,55 @@ describe("TemplateReplaceStream", () => {
     expect(error.code).toBe("ERR_UNMATCHED_VARIABLE");
   });
 
+  it("should not hang on an unclosed template longer than maxVariableNameLength", async () => {
+    // Arrange
+    const input = "{{" + "a".repeat(150);
+
+    // Act
+    const result = await TemplateReplaceStream.replaceStringAsync(input, new Map(), {
+      maxVariableNameLength: 100,
+    });
+
+    // Assert
+    expect(result).toBe(input);
+  });
+
+  it("should keep replacing valid templates after an over-long unclosed template", async () => {
+    // Arrange
+    const input = "{{" + "a".repeat(150) + "{{ name }}";
+    const templateStream = new FixedChunkSizeReadStream(input, 1);
+    const transformStream = new TemplateReplaceStream(new Map([["name", "X"]]), {
+      maxVariableNameLength: 100,
+    });
+
+    // Act
+    const result = await streamToString(templateStream.pipe(transformStream));
+
+    // Assert
+    expect(result).toBe("{{" + "a".repeat(150) + "X");
+  });
+
+  it("should not reject a variable name shorter than maxVariableNameLength as too long", async () => {
+    // The variable-name-length counter must measure only the bytes after the start pattern, not
+    // include the start pattern itself. A 9-byte name with a limit of 10 must not be rejected.
+    const input = "{{" + "a".repeat(9);
+    const result = await TemplateReplaceStream.replaceStringAsync(input, new Map(), {
+      maxVariableNameLength: 10,
+      throwOnUnmatchedTemplate: true,
+    });
+    expect(result).toBe(input);
+  });
+
+  it("should reject a variable name at or beyond maxVariableNameLength with ERR_VARIABLE_NAME_TOO_LONG", async () => {
+    const input = "{{" + "a".repeat(10);
+    const error = await TemplateReplaceStream.replaceStringAsync(input, new Map(), {
+      maxVariableNameLength: 5,
+      throwOnUnmatchedTemplate: true,
+    }).catch((e) => e);
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
+  });
+
   it("should replace variables in a stream", async () => {
     // Arrange
     const templateString = "{{ greeting }}, {{ name }}!";

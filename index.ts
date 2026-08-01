@@ -225,7 +225,6 @@ export class TemplateReplaceStream extends Transform {
           switch (this._state) {
             case State.SEARCHING_START_PATTERN:
               this.findStartPattern();
-              this.releaseStack(this._stackIndex - this._matchCount);
               break;
             case State.PROCESSING_VARIABLE:
               this.findVariableEnd();
@@ -267,28 +266,41 @@ export class TemplateReplaceStream extends Transform {
   }
 
   /**
-   * Stateful function to find the index of the start pattern in the stack. If the start pattern is
-   * found, the stack is cropped to the start pattern and the state is set to processing variable.
+   * Stateful function to find the index of the start pattern in the stack. Everything before the
+   * (partial) start pattern is released so the pattern stays at the front of the stack. On a full
+   * match the state is set to processing variable and the match counter is reset so the variable
+   * name is measured from zero (the start pattern itself does not count towards
+   * {@link TemplateReplaceStreamOptions.maxVariableNameLength}).
    */
   private findStartPattern() {
     if (this._matchCount === 0) {
       if ((this._stackIndex = this._stack.indexOf(this._startPattern[0])) === -1) {
-        this._stackIndex = this._stack.length;
-        return; // no match found
+        this._stackIndex = this._stack.length; // no match found
+      } else {
+        this._matchCount++;
+        this._stackIndex++;
+      }
+    }
+
+    // continue matching the remaining start-pattern bytes (also across chunk boundaries)
+    while (this._matchCount > 0 && this._matchCount < this._startPattern.length) {
+      if (this._stackIndex >= this._stack.length) break; // end of stack reached, need more data
+      if (this._stack[this._stackIndex] !== this._startPattern[this._matchCount]) {
+        this._matchCount = 0; // no match
+        break;
       }
       this._matchCount++;
       this._stackIndex++;
     }
 
-    // continue matching the start pattern
-    for (; this._matchCount < this._startPattern.length; this._matchCount++, this._stackIndex++) {
-      if (this._stackIndex >= this._stack.length) return; // end of stack reached, need more data
-      if (this._stack[this._stackIndex] !== this._startPattern[this._matchCount]) {
-        this._matchCount = 0;
-        return; // no match
-      }
+    // Drop everything before the (partial) start pattern. `_matchCount` still holds the number of
+    // matched pattern bytes here, so `_stackIndex - _matchCount` is where the pattern begins.
+    this.releaseStack(this._stackIndex - this._matchCount);
+
+    if (this._matchCount === this._startPattern.length) {
+      this._state = State.PROCESSING_VARIABLE;
+      this._matchCount = 0;
     }
-    this._state = State.PROCESSING_VARIABLE;
   }
 
   /**
@@ -307,8 +319,13 @@ export class TemplateReplaceStream extends Transform {
         return; // need more data
       }
 
-      // not found within the maximum length
+      // not found within the maximum length. Reset the match state to the end of the stack *before*
+      // releasing it: `releaseStack` subtracts the released length from `_stackIndex`, so without
+      // this `_stackIndex` would go negative and the `_transform` loop would spin forever (a
+      // synchronous event-loop hang). Resetting `_matchCount` lets the next chunk match cleanly.
       this._state = State.SEARCHING_START_PATTERN;
+      this._matchCount = 0;
+      this._stackIndex = this._stack.length;
       if (this._options.throwOnUnmatchedTemplate)
         throw new TemplateReplaceStreamError(
           "Variable name processing reached limit",
