@@ -7,7 +7,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 224 lines of code (including type
+This module is written in pure TypeScript, consists of only 263 lines of code (including type
 definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
@@ -66,8 +66,8 @@ import path from "node:path";
 const variables = new Map([["replace-me", "really fast"]]);
 
 // create the streams
-const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
+const readStream = fs.createReadStream(path.join(import.meta.dirname, "template.txt"));
+const writeStream = fs.createWriteStream(path.join(import.meta.dirname, "example.txt"));
 const templateReplaceStream = new TemplateReplaceStream(variables);
 
 // connect the streams and put the template replace stream in the middle
@@ -89,14 +89,14 @@ into a stream before.
 <summary>Advanced Example Code</summary>
 
 ```ts
-import { StringSource, TemplateReplaceStream } from "template-replace-stream";
+import { type StringSource, TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
-const rootDir = path.join(__dirname, "..");
-const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
+const rootDir = path.join(import.meta.dirname, "..");
+const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");
@@ -125,7 +125,7 @@ readmeWriteStream.on("finish", () => console.log(`Created ${outputFilePath}`));
  * @param file The file to read.
  */
 function openExampleStream(file: string) {
-  return fs.createReadStream(path.join(__dirname, file));
+  return fs.createReadStream(path.join(import.meta.dirname, file));
 }
 
 /**

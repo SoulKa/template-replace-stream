@@ -37,7 +37,7 @@ returns a replacement value for a given template string.
 ### JavaScript
 
 ```js
-{{ javascript-example.js }}
+{{ javascript-example.cjs }}
 ```
 
 ### TypeScript
