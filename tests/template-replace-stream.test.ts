@@ -147,6 +147,19 @@ describe("TemplateReplaceStream", () => {
     expect(result).toBe(templateString);
   });
 
+  it("should remove the template when the variable resolves to an empty string", async () => {
+    // Arrange
+    const templateString = "Hello, {{ name }}!";
+    const readable: Readable = new FixedChunkSizeReadStream(templateString, 1);
+    const transformStream = new TemplateReplaceStream(new Map([["name", ""]]));
+
+    // Act
+    const result = await streamToString(readable.pipe(transformStream));
+
+    // Assert
+    expect(result).toBe("Hello, !");
+  });
+
   it("should replace variables in a stream using another stream as replace value source", async () => {
     // Arrange
     const templateString = "Hello, {{ name }}!";

@@ -237,7 +237,7 @@ export class TemplateReplaceStream extends Transform {
                   this._stackIndex - this._endPattern.length
                 );
                 const value = await this.getValueOfVariable(variableNameBuffer);
-                if (value) {
+                if (value !== undefined) {
                   this._stack = this._stack.subarray(this._stackIndex); // discard the template string
                   this._stackIndex = 0;
                   await this.writeToOutput(value); // replace the template string with the value
