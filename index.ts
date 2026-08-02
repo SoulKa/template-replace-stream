@@ -44,9 +44,14 @@ export type VariableResolver = Map<string, StringSource> | VariableResolverFunct
  * - `ERR_INVALID_OPTION`: an invalid option was passed to the {@link TemplateReplaceStream} constructor.
  * - `ERR_VARIABLE_NAME_TOO_LONG`: a template variable name exceeded {@link TemplateReplaceStreamOptions.maxVariableNameLength}.
  * - `ERR_UNMATCHED_VARIABLE`: a template variable had no replacement value (see {@link UnmatchedVariableError}).
+ * - `ERR_INVALID_CHUNK_TYPE`: a written chunk was neither a string nor a {@link Buffer} (only raised when
+ *   {@link TemplateReplaceStreamOptions.throwOnUnmatchedTemplate} is enabled; otherwise the chunk is passed through unmodified).
  */
 export type TemplateReplaceStreamErrorCode =
-  "ERR_INVALID_OPTION" | "ERR_VARIABLE_NAME_TOO_LONG" | "ERR_UNMATCHED_VARIABLE";
+  | "ERR_INVALID_OPTION"
+  | "ERR_VARIABLE_NAME_TOO_LONG"
+  | "ERR_UNMATCHED_VARIABLE"
+  | "ERR_INVALID_CHUNK_TYPE";
 
 /**
  * The error thrown by the {@link TemplateReplaceStream} for all errors it raises itself, e.g. invalid
@@ -112,8 +117,8 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
  * Invalid options are thrown synchronously from the constructor (`ERR_INVALID_OPTION`). When
  * {@link TemplateReplaceStreamOptions.throwOnUnmatchedTemplate} is enabled, the stream also fails on a
  * variable name exceeding {@link TemplateReplaceStreamOptions.maxVariableNameLength}
- * (`ERR_VARIABLE_NAME_TOO_LONG`) and on a non-string/{@link Buffer} chunk, in addition to the
- * unmatched-variable case described on that option.
+ * (`ERR_VARIABLE_NAME_TOO_LONG`) and on a non-string/{@link Buffer} chunk (`ERR_INVALID_CHUNK_TYPE`),
+ * in addition to the unmatched-variable case described on that option.
  */
 export class TemplateReplaceStream extends Transform {
   private _stack: Buffer = EMPTY_BUFFER;
@@ -507,7 +512,10 @@ export class TemplateReplaceStream extends Transform {
 
   private handleUnknownChunkType(chunk: any) {
     if (this._options.throwOnUnmatchedTemplate) {
-      throw new TemplateReplaceStreamError("Cannot replace variables in non-string-link streams");
+      throw new TemplateReplaceStreamError(
+        "Cannot replace variables in non-string-like chunks",
+        "ERR_INVALID_CHUNK_TYPE"
+      );
     } else if (this._options.log) {
       console.warn("Received non-buffer chunk. Will not modify it.");
     }

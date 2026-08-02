@@ -62,6 +62,34 @@ describe("TemplateReplaceStream", () => {
     expect((error as TemplateReplaceStreamError).code).toBe("ERR_INVALID_OPTION");
   });
 
+  it("should throw a TemplateReplaceStreamError with code ERR_INVALID_CHUNK_TYPE for a non-string/Buffer chunk when throwOnUnmatchedTemplate is set", async () => {
+    // Object mode lets the writable side accept a plain object; the stream cannot template it and,
+    // with throwOnUnmatchedTemplate enabled, must fail with a coded error rather than a bare message.
+    const transformStream = new TemplateReplaceStream(new Map(), {
+      throwOnUnmatchedTemplate: true,
+      streamOptions: { objectMode: true },
+    });
+    const error = await new Promise<unknown>((resolve) => {
+      transformStream.on("error", resolve);
+      transformStream.write({ not: "a buffer" });
+    });
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect((error as TemplateReplaceStreamError).code).toBe("ERR_INVALID_CHUNK_TYPE");
+  });
+
+  it("passes a non-string/Buffer chunk through unmodified when throwOnUnmatchedTemplate is not set", async () => {
+    const transformStream = new TemplateReplaceStream(new Map(), {
+      streamOptions: { objectMode: true },
+    });
+    const chunk = { keep: "me" };
+    const received = await new Promise<unknown>((resolve, reject) => {
+      transformStream.on("data", resolve);
+      transformStream.on("error", reject);
+      transformStream.end(chunk);
+    });
+    expect(received).toBe(chunk);
+  });
+
   it("should throw an UnmatchedVariableError exposing the variable name and code when throwOnUnmatchedTemplate is set", async () => {
     // Arrange
     const readable = new FixedChunkSizeReadStream("{{ missing }}", 1);
