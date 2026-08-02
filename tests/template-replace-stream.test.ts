@@ -430,4 +430,40 @@ describe("TemplateReplaceStream with varying start/end pattern lengths", () => {
     );
     expect(result).toBe("X");
   });
+
+  // Self-overlapping start pattern — one whose first two bytes are equal, e.g. "<<!". A partial start
+  // match must not skip the byte where the *real* start could begin: in "<<<!name>>" the "<<" at
+  // offset 0 fails on its third byte, but the genuine "<<!" starts one byte later at offset 1. The
+  // leading "<" is emitted verbatim before the replacement.
+  it("handles a self-overlapping start pattern (overlapping partial match)", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "<<<!name>>",
+      new Map([["name", "X"]]),
+      { startPattern: "<<!", endPattern: ">>" }
+    );
+    expect(result).toBe("<X");
+  });
+
+  it("handles a self-overlapping start pattern across single-byte chunks", async () => {
+    const readable = new FixedChunkSizeReadStream("<<<!name>>", 1);
+    const transformStream = new TemplateReplaceStream(new Map([["name", "X"]]), {
+      startPattern: "<<!",
+      endPattern: ">>",
+    });
+    const result = await streamToString(readable.pipe(transformStream));
+    expect(result).toBe("<X");
+  });
+
+  // Repeated-prefix start pattern "aab": in "aaabNM>>" the run "aaa" produces a partial "aa" that
+  // fails on its third byte, and the real start "aab" begins at the next 'a'. The leading "a" is
+  // emitted verbatim before the replacement. (The variable name avoids the start byte 'a', which
+  // would otherwise be treated as a new start candidate — a separate, intended behavior.)
+  it("handles overlapping partial matches for a repeated-prefix start pattern", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "aaabNM>>",
+      new Map([["NM", "X"]]),
+      { startPattern: "aab", endPattern: ">>" }
+    );
+    expect(result).toBe("aX");
+  });
 });

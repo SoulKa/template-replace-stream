@@ -286,6 +286,11 @@ export class TemplateReplaceStream extends Transform {
     while (this._matchCount > 0 && this._matchCount < this._startPattern.length) {
       if (this._stackIndex >= this._stack.length) break; // end of stack reached, need more data
       if (this._stack[this._stackIndex] !== this._startPattern[this._matchCount]) {
+        // A false start pattern. Rewind to one byte past where this partial match began (its first
+        // byte is at `_stackIndex - _matchCount`) so an overlapping start that begins inside it —
+        // possible when the start pattern's first bytes repeat — is not skipped. The byte that
+        // started the false match is released below.
+        this._stackIndex -= this._matchCount - 1;
         this._matchCount = 0; // no match
         break;
       }
