@@ -6,8 +6,8 @@ import path from "node:path";
 const variables = new Map([["replace-me", "really fast"]]);
 
 // create the streams
-const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
+const readStream = fs.createReadStream(path.join(import.meta.dirname, "template.txt"));
+const writeStream = fs.createWriteStream(path.join(import.meta.dirname, "example.txt"));
 const templateReplaceStream = new TemplateReplaceStream(variables);
 
 // connect the streams and put the template replace stream in the middle

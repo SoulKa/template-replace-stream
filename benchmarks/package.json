@@ -3,9 +3,10 @@
   "name": "benchmarks",
   "version": "1.0.0",
   "description": "Benchmarks for the template-replace-stream module and comparable modules",
+  "type": "module",
   "main": "index.ts",
   "scripts": {
-    "start": "npx tsx index.ts"
+    "start": "tsx index.ts"
   },
   "repository": {
     "type": "git",
@@ -18,10 +19,9 @@
   },
   "homepage": "https://github.com/SoulKa/template-replace-stream#readme",
   "devDependencies": {
-    "@types/replacestream": "^4.0.4",
-    "replacestream": "^4.0.3",
-    "stream-replace-string": "^2.0.0",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.20.4"
+    "@types/replacestream": "4.0.4",
+    "replacestream": "4.0.3",
+    "stream-replace-string": "2.0.0",
+    "tsx": "4.23.1"
   }
 }

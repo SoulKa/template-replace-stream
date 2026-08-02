@@ -1,10 +1,7 @@
 import { Readable } from "node:stream";
 
 export type Framework =
-  | "native"
-  | "template-replace-stream"
-  | "stream-replace-string"
-  | "replacestream";
+  "native" | "template-replace-stream" | "stream-replace-string" | "replacestream";
 
 export const FRAMEWORKS = [
   "native",

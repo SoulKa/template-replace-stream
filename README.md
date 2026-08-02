@@ -7,7 +7,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 224 lines of code (including type
+This module is written in pure TypeScript, consists of only 286 lines of code (including type
 definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
@@ -18,15 +18,16 @@ see [Benchmarks](#benchmarks)).
 npm install template-replace-stream
 ```
 
-This module contains type definitions and also an `.mjs` file for maximum compatibility.
+This module is published as ESM only (`import`, no `require()`) and ships with TypeScript type
+definitions. It requires Node.js `>=22`.
 
 ### Supported Node.js Versions
 
 The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
 
-| 18.x | 20.x | 22.x | 24.x |
-| --- | --- | --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| 22.x | 24.x |
+| --- | --- |
+| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
 
@@ -66,8 +67,8 @@ import path from "node:path";
 const variables = new Map([["replace-me", "really fast"]]);
 
 // create the streams
-const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
+const readStream = fs.createReadStream(path.join(import.meta.dirname, "template.txt"));
+const writeStream = fs.createWriteStream(path.join(import.meta.dirname, "example.txt"));
 const templateReplaceStream = new TemplateReplaceStream(variables);
 
 // connect the streams and put the template replace stream in the middle
@@ -89,14 +90,14 @@ into a stream before.
 <summary>Advanced Example Code</summary>
 
 ```ts
-import { StringSource, TemplateReplaceStream } from "template-replace-stream";
+import { type StringSource, TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
-const rootDir = path.join(__dirname, "..");
-const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
+const rootDir = path.join(import.meta.dirname, "..");
+const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");
@@ -125,7 +126,7 @@ readmeWriteStream.on("finish", () => console.log(`Created ${outputFilePath}`));
  * @param file The file to read.
  */
 function openExampleStream(file: string) {
-  return fs.createReadStream(path.join(__dirname, file));
+  return fs.createReadStream(path.join(import.meta.dirname, file));
 }
 
 /**
@@ -156,8 +157,9 @@ export type TemplateReplaceStreamOptions = {
     /** Default: `false`. If true, the stream creates logs on debug level */
     log: boolean;
     /**
-     * Default: `false`. If true, the stream throws an error when a template variable has no
-     * replacement value. Takes precedence over `removeUnmatchedTemplate`.
+     * Default: `false`. If `true`, an unmatched template variable — one that has no replacement value —
+     * makes the stream fail with an {@link UnmatchedVariableError} (emitted on the stream, or thrown by
+     * the `replace*Async` helpers) instead of leaving the template untouched in the output.
      */
     throwOnUnmatchedTemplate: boolean;
     /**
@@ -174,6 +176,33 @@ export type TemplateReplaceStreamOptions = {
     /** Any options for the lower level {@link Transform} stream. Do not replace transform or flush */
     streamOptions?: TransformOptions;
 };
+```
+
+### Error Handling
+
+Every error the stream raises is a `TemplateReplaceStreamError` (or its `UnmatchedVariableError`
+subclass) carrying a stable `code`. Prefer matching on `code` over the (human-readable) message.
+
+| `code` | Cause |
+| --- | --- |
+| `ERR_INVALID_OPTION` | An invalid option was passed to the constructor (thrown synchronously). |
+| `ERR_VARIABLE_NAME_TOO_LONG` | A variable name exceeded `maxVariableNameLength` (only when `throwOnUnmatchedTemplate` is enabled). |
+| `ERR_UNMATCHED_VARIABLE` | A variable had no replacement value (only when `throwOnUnmatchedTemplate` is enabled). The `UnmatchedVariableError` subclass also exposes the name via `.variableName`. |
+| `ERR_INVALID_CHUNK_TYPE` | A written chunk was neither a string nor a `Buffer` (only when `throwOnUnmatchedTemplate` is enabled; otherwise the chunk is passed through unmodified). |
+
+Constructor errors are thrown synchronously; all others are emitted on the stream (or rejected by the
+`replace*Async` helpers).
+
+```ts
+import { TemplateReplaceStream, UnmatchedVariableError } from "template-replace-stream";
+
+try {
+  await TemplateReplaceStream.replaceStringAsync("{{ name }}", new Map(), {
+    throwOnUnmatchedTemplate: true,
+  });
+} catch (e) {
+  if (e instanceof UnmatchedVariableError) console.error(`Missing variable: ${e.variableName}`);
+}
 ```
 
 ## Benchmarks
@@ -213,6 +242,20 @@ around 10ms. Since this duration is similar for smaller file sizes, we can see t
 perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
+
+### 3.0.0
+
+- **Breaking:** the package is now ESM only and requires Node.js `>=22`. CommonJS `require()` is no
+  longer supported.
+- Add typed errors: every failure is now a `TemplateReplaceStreamError` (or its
+  `UnmatchedVariableError` subclass) carrying a stable `code` (`ERR_INVALID_OPTION`,
+  `ERR_VARIABLE_NAME_TOO_LONG`, `ERR_UNMATCHED_VARIABLE`, `ERR_INVALID_CHUNK_TYPE`).
+  `UnmatchedVariableError` exposes the offending name via `.variableName`
+- Fix a deadlock when a `Readable` replacement value larger than the readable buffer was consumed
+  slowly
+- Fix over-long variable names resolving inconsistently depending on how the input was chunked
+- Fix self-overlapping and repeated-prefix start/end patterns being missed
+- Fix an empty string (`""`) replacement value being treated as an unmatched template
 
 ### 2.2.0
 

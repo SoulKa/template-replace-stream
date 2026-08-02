@@ -164,7 +164,7 @@ async function benchmark() {
     const chunkSize = DEFAULT_CHUNK_SIZE;
     const numChunks = Math.ceil(sizeBytes / chunkSize);
     const sourceStream = new FixedLengthReadStream(
-      (i) => getChunk(`{{${i}}}`, chunkSize),
+      (i: number) => getChunk(`{{${i}}}`, chunkSize),
       sizeBytes
     );
 

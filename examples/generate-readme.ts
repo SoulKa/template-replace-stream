@@ -1,11 +1,11 @@
-import { StringSource, TemplateReplaceStream } from "template-replace-stream";
+import { type StringSource, TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
-const rootDir = path.join(__dirname, "..");
-const exampleFiles = ["javascript-example.js", "typescript-example.ts", "generate-readme.ts"];
+const rootDir = path.join(import.meta.dirname, "..");
+const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");
@@ -34,7 +34,7 @@ readmeWriteStream.on("finish", () => console.log(`Created ${outputFilePath}`));
  * @param file The file to read.
  */
 function openExampleStream(file: string) {
-  return fs.createReadStream(path.join(__dirname, file));
+  return fs.createReadStream(path.join(import.meta.dirname, file));
 }
 
 /**

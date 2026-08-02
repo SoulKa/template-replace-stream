@@ -1,12 +1,11 @@
 {
   "extends": "@tsconfig/node24/tsconfig.json",
-  "exclude": ["dist", "benchmarks"],
   "compilerOptions": {
+    "types": ["node"],
     "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["node"],
-    "paths": {
-      "template-replace-stream": ["."]
-    }
-  }
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }
