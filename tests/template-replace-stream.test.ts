@@ -466,4 +466,127 @@ describe("TemplateReplaceStream with varying start/end pattern lengths", () => {
     );
     expect(result).toBe("aX");
   });
+
+  // The overlapping-start rewind must also work when the partial match spans a chunk boundary, i.e.
+  // when `_matchCount` is carried into the next chunk before the mismatch is discovered.
+  it("handles a repeated-prefix start pattern across single-byte chunks", async () => {
+    const readable = new FixedChunkSizeReadStream("aaabNM>>", 1);
+    const transformStream = new TemplateReplaceStream(new Map([["NM", "X"]]), {
+      startPattern: "aab",
+      endPattern: ">>",
+    });
+    const result = await streamToString(readable.pipe(transformStream));
+    expect(result).toBe("aX");
+  });
+});
+
+describe("TemplateReplaceStream edge cases", () => {
+  it("replaces adjacent templates with no text between them", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "{{a}}{{b}}",
+      new Map([
+        ["a", "1"],
+        ["b", "2"],
+      ])
+    );
+    expect(result).toBe("12");
+  });
+
+  it("does not re-scan a replacement value that itself contains template syntax", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "{{a}}",
+      new Map([
+        ["a", "{{b}}"],
+        ["b", "SHOULD_NOT_APPEAR"],
+      ])
+    );
+    expect(result).toBe("{{b}}");
+  });
+
+  it("leaves an empty template {{}} untouched when the empty name is unmatched", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync("a{{}}b", new Map());
+    expect(result).toBe("a{{}}b");
+  });
+
+  it("replaces an empty variable name when the map has an empty-string key", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync("{{}}", new Map([["", "Z"]]));
+    expect(result).toBe("Z");
+  });
+
+  it("trims a whitespace-only variable name down to the empty-string key", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync("{{   }}", new Map([["", "Z"]]));
+    expect(result).toBe("Z");
+  });
+
+  it("replaces using a Buffer value from the map", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "x{{a}}y",
+      new Map([["a", Buffer.from("BUF")]])
+    );
+    expect(result).toBe("xBUFy");
+  });
+
+  it("replaces using a resolver function returning a Promise", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync("{{a}}", (name) =>
+      name === "a" ? Promise.resolve("P") : undefined
+    );
+    expect(result).toBe("P");
+  });
+
+  it("replaces using a resolver function returning a Readable", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync("{{a}}", (name) =>
+      name === "a" ? Readable.from("RS") : undefined
+    );
+    expect(result).toBe("RS");
+  });
+
+  it("removes the template when the value is an empty Readable stream", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "x{{a}}y",
+      new Map([["a", Readable.from("")]])
+    );
+    expect(result).toBe("xy");
+  });
+
+  it("preserves a multi-byte UTF-8 replacement value", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "x{{a}}y",
+      new Map([["a", "🎉"]])
+    );
+    expect(result).toBe("x🎉y");
+  });
+
+  it("resolves a variable name containing multi-byte UTF-8 characters", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "{{café}}",
+      new Map([["café", "U"]])
+    );
+    expect(result).toBe("U");
+  });
+
+  // The stream operates on bytes; a multi-byte character split across chunk boundaries in the
+  // passthrough text must be reassembled intact rather than corrupted.
+  it("preserves a multi-byte character split across single-byte chunks", async () => {
+    const readable = new FixedChunkSizeReadStream(Buffer.from("pp😀qq"), 1);
+    const transformStream = new TemplateReplaceStream(new Map());
+    const result = await streamToString(readable.pipe(transformStream));
+    expect(result).toBe("pp😀qq");
+  });
+
+  it("flushes a lone unterminated start pattern at end of input", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "text {{a",
+      new Map([["a", "1"]])
+    );
+    expect(result).toBe("text {{a");
+  });
+
+  // With the default {{ }} patterns, "{{{{a}}}}" resolves the inner {{a}} and leaves the outer pair.
+  it("replaces the inner pair of nested-looking braces and keeps the outer braces", async () => {
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      "{{{{a}}}}",
+      new Map([["a", "1"]])
+    );
+    expect(result).toBe("{{1}}");
+  });
 });
