@@ -1,4 +1,4 @@
-import { Readable } from "stream";
+import { Readable, Writable } from "stream";
 import {
   TemplateReplaceStream,
   TemplateReplaceStreamError,
@@ -126,6 +126,110 @@ describe("TemplateReplaceStream", () => {
     }).catch((e) => e);
     expect(error).toBeInstanceOf(TemplateReplaceStreamError);
     expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
+  });
+
+  it("should count the whole variable name toward maxVariableNameLength, including bytes before a lone end-pattern byte", async () => {
+    // A single "}" does not complete the "}}" end pattern, but the bytes leading up to it still count
+    // toward the name length. Name "aa}bbbbbb" is 9 bytes, exceeding the limit of 8. (Before the
+    // length was tracked directly, an internal end-pattern byte reset the counter and this passed.)
+    const input = "{{aa}" + "b".repeat(6);
+    const error = await TemplateReplaceStream.replaceStringAsync(input, new Map(), {
+      maxVariableNameLength: 8,
+      throwOnUnmatchedTemplate: true,
+    }).catch((e) => e);
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
+  });
+
+  it("should not let the internal buffer grow with the input on an unterminated end-byte run", async () => {
+    // Stream "{{" then ~200KB of "}x". Every lone "}" leaves the name unterminated. The fix abandons
+    // the over-long name and releases the buffer as it scans, so the residual stack observed between
+    // chunks stays ~0; the pre-fix counter-reset never released and the residual grew to the whole
+    // input. Assert the residual is a small fraction of the input (i.e. memory is sublinear).
+    // White-box: peak residual buffering is not otherwise observable.
+    const input = "{{" + "}x".repeat(100_000);
+    const stream = new TemplateReplaceStream(new Map(), { maxVariableNameLength: 100 });
+    let residualAfterChunk = 0;
+    type Internals = { _transform: TemplateReplaceStream["_transform"]; _stack: Buffer };
+    const internals = stream as unknown as Internals;
+    const origTransform = internals._transform.bind(stream);
+    internals._transform = (chunk, encoding, callback) =>
+      origTransform(chunk, encoding, ((...args) => {
+        if (internals._stack.length > residualAfterChunk)
+          residualAfterChunk = internals._stack.length;
+        (callback as (...a: unknown[]) => void)(...args);
+      }) as typeof callback);
+    const readable = new FixedChunkSizeReadStream(input, 64 * 1024);
+    await streamToString(readable.pipe(stream));
+    expect(residualAfterChunk).toBeLessThan(input.length / 8);
+  });
+
+  // Regression: an unterminated template that reopens the start pattern before any end-pattern byte
+  // (e.g. "{{{") used to hang. In `findVariableEnd`, when no end byte remains (nextEndIndex === -1)
+  // but a start byte does, taking the end branch set `_stackIndex = nextEndIndex + 1 = 0` and spun
+  // the `_transform` loop forever. The guard now also requires `nextEndIndex !== -1`, so such input
+  // is passed through (or the reopened template is resolved) instead of hanging.
+  it("passes through an unterminated template that reopens the start pattern without hanging", async () => {
+    expect(await TemplateReplaceStream.replaceStringAsync("{{{", new Map())).toBe("{{{");
+    expect(await TemplateReplaceStream.replaceStringAsync("{{{{", new Map())).toBe("{{{{");
+    expect(await TemplateReplaceStream.replaceStringAsync("{{ {{ ", new Map())).toBe("{{ {{ ");
+    expect(await TemplateReplaceStream.replaceStringAsync("Hello {{name{{", new Map())).toBe(
+      "Hello {{name{{"
+    );
+    // The reopened template wins; the abandoned prefix is emitted verbatim.
+    expect(await TemplateReplaceStream.replaceStringAsync("{{a{{b}}", new Map([["b", "X"]]))).toBe(
+      "{{aX"
+    );
+  });
+
+  it("does not hang on a reopened start pattern split across single-byte chunks", async () => {
+    const readable = new FixedChunkSizeReadStream("a{{b{{c}}", 1);
+    const transformStream = new TemplateReplaceStream(new Map([["c", "Z"]]));
+    expect(await streamToString(readable.pipe(transformStream))).toBe("a{{bZ");
+  });
+
+  // Regression: a Readable replacement value larger than the transform's readable highWaterMark
+  // makes `push` return false; the code used to await `once(this, "drain")` — a writable-side event
+  // that never fires for the already-flushed template — deadlocking under a slow consumer. The wait
+  // is now released by the readable side's `_read`, so the pipeline drains and finishes.
+  it("completes a large Readable replacement value behind a slow consumer", async () => {
+    const CHUNK = Buffer.alloc(8 * 1024, 0x61);
+    let produced = 0;
+    const value = new Readable({
+      read() {
+        this.push(produced++ < 32 ? CHUNK : null);
+      },
+    });
+    const trs = new TemplateReplaceStream(new Map([["a", value]]));
+    let delivered = 0;
+    const slow = new Writable({
+      highWaterMark: 1024,
+      write(chunk, _enc, cb) {
+        delivered += chunk.length;
+        setTimeout(cb, 1);
+      },
+    });
+    const settled = new Promise<"finished" | "errored">((resolve) => {
+      slow.on("finish", () => resolve("finished"));
+      slow.on("error", () => resolve("errored"));
+      trs.on("error", () => resolve("errored"));
+    });
+    trs.pipe(slow);
+    trs.end("x{{a}}y");
+    let timer: NodeJS.Timeout;
+    const stalled = new Promise<"stalled">((resolve) => {
+      timer = setTimeout(() => resolve("stalled"), 3000);
+    });
+    try {
+      expect(await Promise.race([settled, stalled])).toBe("finished");
+      // "x" + 32 * 8KiB value + "y"
+      expect(delivered).toBe(1 + 32 * 8 * 1024 + 1);
+    } finally {
+      clearTimeout(timer!);
+      trs.destroy();
+      value.destroy();
+      slow.destroy();
+    }
   });
 
   it("should replace variables in a stream", async () => {

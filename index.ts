@@ -1,5 +1,4 @@
 import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
-import { once } from "node:events";
 
 /**
  * Options for the template replace stream.
@@ -121,6 +120,7 @@ export class TemplateReplaceStream extends Transform {
   private _state: State = State.SEARCHING_START_PATTERN;
   private _matchCount: number = 0;
   private _stackIndex: number = 0;
+  private readonly _readWaiters: Array<() => void> = [];
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
@@ -347,8 +347,12 @@ export class TemplateReplaceStream extends Transform {
       return; // no match
     }
 
-    // found a pattern
-    if (nextStartIndex === -1 || nextStartIndex > nextEndIndex) {
+    // A boundary byte was found. Take the end branch only when an end-pattern byte actually exists
+    // and is not preceded by a start-pattern byte; otherwise (re)start at the start-pattern byte.
+    // Guarding on `nextEndIndex !== -1` is essential: without it a start byte with no end byte ahead
+    // (`nextEndIndex === -1`, e.g. the input "{{{") would take the end branch and set
+    // `_stackIndex = nextEndIndex + 1 = 0`, spinning the `_transform` loop forever (a hard hang).
+    if (nextEndIndex !== -1 && (nextStartIndex === -1 || nextEndIndex < nextStartIndex)) {
       this._state = State.SEARCHING_END_PATTERN;
       this._stackIndex = nextEndIndex + 1;
     } else {
@@ -440,8 +444,23 @@ export class TemplateReplaceStream extends Transform {
 
   private async writeStreamToOutput(stream: Readable) {
     for await (const chunk of stream) {
-      if (!this.push(chunk)) await once(this, "drain");
+      // `push` feeds the readable side; when it returns false the readable buffer is full and the
+      // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
+      // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
+      if (!this.push(chunk)) {
+        await new Promise<void>((resolve) => this._readWaiters.push(resolve));
+      }
     }
+  }
+
+  /**
+   * The readable side calls `_read` when the consumer can accept more data. Release any value-stream
+   * writers parked in {@link writeStreamToOutput} on a full buffer, then delegate to the default
+   * {@link Transform} read behavior.
+   */
+  _read(size: number) {
+    while (this._readWaiters.length > 0) this._readWaiters.shift()!();
+    super._read(size);
   }
 
   private toBuffer(stringLike: string | Buffer) {
