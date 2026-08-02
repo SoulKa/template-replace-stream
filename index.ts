@@ -93,6 +93,9 @@ enum State {
   SEARCHING_END_PATTERN,
 }
 
+/** Shared zero-length buffer used to represent an empty stack (avoids re-allocating on every reset). */
+const EMPTY_BUFFER = Buffer.alloc(0);
+
 const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   log: false,
   throwOnUnmatchedTemplate: false,
@@ -114,7 +117,7 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
  * unmatched-variable case described on that option.
  */
 export class TemplateReplaceStream extends Transform {
-  private _stack: Buffer = Buffer.alloc(0);
+  private _stack: Buffer = EMPTY_BUFFER;
   private _state: State = State.SEARCHING_START_PATTERN;
   private _matchCount: number = 0;
   private _stackIndex: number = 0;
@@ -213,42 +216,43 @@ export class TemplateReplaceStream extends Transform {
     if (typeof chunk === "string") chunk = Buffer.from(chunk, encoding);
 
     try {
-      if (chunk instanceof Buffer) {
-        // if there is text left from last iteration, prepend it to the chunk
-        if (this._stack.length === 0) {
-          this._stack = chunk;
-        } else {
-          this._stack = Buffer.concat([this._stack, chunk]);
-        }
-
-        while (this._stackIndex < this._stack.length) {
-          switch (this._state) {
-            case State.SEARCHING_START_PATTERN:
-              this.findStartPattern();
-              break;
-            case State.PROCESSING_VARIABLE:
-              this.findVariableEnd();
-              break;
-            case State.SEARCHING_END_PATTERN:
-              if (this.findEndPattern()) {
-                const variableNameBuffer = this._stack.subarray(
-                  this._startPattern.length,
-                  this._stackIndex - this._endPattern.length
-                );
-                const value = await this.getValueOfVariable(variableNameBuffer);
-                if (value !== undefined) {
-                  this._stack = this._stack.subarray(this._stackIndex); // discard the template string
-                  this._stackIndex = 0;
-                  await this.writeToOutput(value); // replace the template string with the value
-                } else {
-                  this.releaseStack(this._stackIndex); // write the original template string
-                }
-              }
-              break;
-          }
-        }
-      } else {
+      if (!(chunk instanceof Buffer)) {
         this.handleUnknownChunkType(chunk);
+        return callback();
+      }
+
+      // if there is text left from last iteration, prepend it to the chunk
+      if (this._stack.length === 0) {
+        this._stack = chunk;
+      } else {
+        this._stack = Buffer.concat([this._stack, chunk]);
+      }
+
+      while (this._stackIndex < this._stack.length) {
+        switch (this._state) {
+          case State.SEARCHING_START_PATTERN:
+            this.findStartPattern();
+            break;
+          case State.PROCESSING_VARIABLE:
+            this.findVariableEnd();
+            break;
+          case State.SEARCHING_END_PATTERN:
+            if (this.findEndPattern()) {
+              const variableNameBuffer = this._stack.subarray(
+                this._startPattern.length,
+                this._stackIndex - this._endPattern.length
+              );
+              const value = await this.getValueOfVariable(variableNameBuffer);
+              if (value !== undefined) {
+                this._stack = this._stack.subarray(this._stackIndex); // discard the template string
+                this._stackIndex = 0;
+                await this.writeToOutput(value); // replace the template string with the value
+              } else {
+                this.releaseStack(this._stackIndex); // write the original template string
+              }
+            }
+            break;
+        }
       }
     } catch (e) {
       callback(
@@ -267,10 +271,11 @@ export class TemplateReplaceStream extends Transform {
 
   /**
    * Stateful function to find the index of the start pattern in the stack. Everything before the
-   * (partial) start pattern is released so the pattern stays at the front of the stack. On a full
-   * match the state is set to processing variable and the match counter is reset so the variable
-   * name is measured from zero (the start pattern itself does not count towards
-   * {@link TemplateReplaceStreamOptions.maxVariableNameLength}).
+   * (partial) start pattern is released so the pattern stays pinned at the front of the stack, which
+   * lets {@link findVariableEnd} derive the variable-name length from `_stackIndex - _startPattern.length`
+   * (the start pattern itself does not count towards
+   * {@link TemplateReplaceStreamOptions.maxVariableNameLength}). On a full match the state is set to
+   * processing variable and the match counter is reset for the next pattern search.
    */
   private findStartPattern() {
     if (this._matchCount === 0) {
@@ -318,19 +323,20 @@ export class TemplateReplaceStream extends Transform {
     const nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
 
     if (nextEndIndex === -1 && nextStartIndex === -1) {
-      this._matchCount += this._stack.length - this._stackIndex;
-      if (this._matchCount < this._options.maxVariableNameLength) {
-        this._stackIndex = this._stack.length;
+      // No boundary byte in the remaining stack, so the whole rest belongs to the variable name. The
+      // start pattern stays pinned at `_stack[0]` for the entire scan, so the name length so far is
+      // simply `_stackIndex - _startPattern.length` — no need to thread it through `_matchCount`.
+      this._stackIndex = this._stack.length;
+      if (this._stackIndex - this._startPattern.length < this._options.maxVariableNameLength) {
         return; // need more data
       }
 
-      // not found within the maximum length. Reset the match state to the end of the stack *before*
-      // releasing it: `releaseStack` subtracts the released length from `_stackIndex`, so without
-      // this `_stackIndex` would go negative and the `_transform` loop would spin forever (a
-      // synchronous event-loop hang). Resetting `_matchCount` lets the next chunk match cleanly.
+      // The variable name reached the maximum length without a closing pattern. Abandon it and
+      // resume searching for the next start pattern. `_stackIndex` is already at the end of the stack
+      // so `releaseStack` leaves it at 0, and `_matchCount` must be 0 for the next `findStartPattern`
+      // (leaving it non-zero would make the `_transform` loop spin forever — a synchronous hang).
       this._state = State.SEARCHING_START_PATTERN;
       this._matchCount = 0;
-      this._stackIndex = this._stack.length;
       if (this._options.throwOnUnmatchedTemplate)
         throw new TemplateReplaceStreamError(
           "Variable name processing reached limit",
@@ -388,7 +394,7 @@ export class TemplateReplaceStream extends Transform {
       return;
     } else if (index === this._stack.length) {
       this.push(this._stack);
-      this._stack = Buffer.alloc(0);
+      this._stack = EMPTY_BUFFER;
     } else {
       this.push(this._stack.subarray(0, index));
       this._stack = this._stack.subarray(index);
@@ -407,13 +413,13 @@ export class TemplateReplaceStream extends Transform {
     let value = this._resolveVariable(variableName);
     if (value instanceof Promise) value = await value;
 
-    if (value === undefined) {
-      if (this._options.throwOnUnmatchedTemplate) throw new UnmatchedVariableError(variableName);
-      if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
-    } else {
+    if (value !== undefined) {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
       return value;
     }
+
+    if (this._options.throwOnUnmatchedTemplate) throw new UnmatchedVariableError(variableName);
+    if (this._options.log) console.debug(`Unmatched variable "${variableName}"`);
   }
 
   /**
