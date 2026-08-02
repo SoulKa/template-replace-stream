@@ -120,7 +120,7 @@ export class TemplateReplaceStream extends Transform {
   private _state: State = State.SEARCHING_START_PATTERN;
   private _matchCount: number = 0;
   private _stackIndex: number = 0;
-  private readonly _readWaiters: Array<() => void> = [];
+  private _readWaiter: (() => void) | null = null;
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
@@ -237,20 +237,7 @@ export class TemplateReplaceStream extends Transform {
             this.findVariableEnd();
             break;
           case State.SEARCHING_END_PATTERN:
-            if (this.findEndPattern()) {
-              const variableNameBuffer = this._stack.subarray(
-                this._startPattern.length,
-                this._stackIndex - this._endPattern.length
-              );
-              const value = await this.getValueOfVariable(variableNameBuffer);
-              if (value !== undefined) {
-                this._stack = this._stack.subarray(this._stackIndex); // discard the template string
-                this._stackIndex = 0;
-                await this.writeToOutput(value); // replace the template string with the value
-              } else {
-                this.releaseStack(this._stackIndex); // write the original template string
-              }
-            }
+            await this.handleEndPattern();
             break;
         }
       }
@@ -267,6 +254,28 @@ export class TemplateReplaceStream extends Transform {
   _flush(callback: TransformCallback) {
     if (this._stack.length > 0) this.push(this._stack);
     callback();
+  }
+
+  /**
+   * Handles the {@link State.SEARCHING_END_PATTERN} state. Continues matching the end pattern and, once
+   * a full end pattern is found, resolves the variable name between the start and end patterns. If the
+   * variable has a replacement value, the template string is discarded from the stack and the value is
+   * written to the output. Otherwise the original template string is released (emitted) verbatim.
+   */
+  private async handleEndPattern() {
+    if (!this.findEndPattern()) return;
+    const variableNameBuffer = this._stack.subarray(
+      this._startPattern.length,
+      this._stackIndex - this._endPattern.length
+    );
+    const value = await this.getValueOfVariable(variableNameBuffer);
+    if (value !== undefined) {
+      this._stack = this._stack.subarray(this._stackIndex); // discard the template string
+      this._stackIndex = 0;
+      await this.writeToOutput(value); // replace the template string with the value
+    } else {
+      this.releaseStack(this._stackIndex); // write the original template string
+    }
   }
 
   /**
@@ -474,18 +483,21 @@ export class TemplateReplaceStream extends Transform {
       // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
       // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
       if (!this.push(chunk)) {
-        await new Promise<void>((resolve) => this._readWaiters.push(resolve));
+        await new Promise<void>((resolve) => (this._readWaiter = resolve));
       }
     }
   }
 
   /**
-   * The readable side calls `_read` when the consumer can accept more data. Release any value-stream
-   * writers parked in {@link writeStreamToOutput} on a full buffer, then delegate to the default
-   * {@link Transform} read behavior.
+   * The readable side calls `_read` when the consumer can accept more data. Wake the value-stream
+   * writer parked in {@link writeStreamToOutput} on a full buffer, then delegate to the default
+   * {@link Transform} read behavior. At most one writer is ever parked: `_transform` is serialized by
+   * Node and awaits {@link writeStreamToOutput} inline, so a single resolver suffices.
    */
   _read(size: number) {
-    while (this._readWaiters.length > 0) this._readWaiters.shift()!();
+    const resolve = this._readWaiter;
+    this._readWaiter = null;
+    resolve?.();
     super._read(size);
   }
 
