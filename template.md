@@ -81,6 +81,7 @@ subclass) carrying a stable `code`. Prefer matching on `code` over the (human-re
 | `ERR_INVALID_OPTION` | An invalid option was passed to the constructor (thrown synchronously). |
 | `ERR_VARIABLE_NAME_TOO_LONG` | A variable name exceeded `maxVariableNameLength` (only when `throwOnUnmatchedTemplate` is enabled). |
 | `ERR_UNMATCHED_VARIABLE` | A variable had no replacement value (only when `throwOnUnmatchedTemplate` is enabled). The `UnmatchedVariableError` subclass also exposes the name via `.variableName`. |
+| `ERR_INVALID_CHUNK_TYPE` | A written chunk was neither a string nor a `Buffer` (only when `throwOnUnmatchedTemplate` is enabled; otherwise the chunk is passed through unmodified). |
 
 Constructor errors are thrown synchronously; all others are emitted on the stream (or rejected by the
 `replace*Async` helpers).
@@ -141,8 +142,8 @@ perform too well in the 1MiB file. We will keep optimizing for that.
   longer supported.
 - Add typed errors: every failure is now a `TemplateReplaceStreamError` (or its
   `UnmatchedVariableError` subclass) carrying a stable `code` (`ERR_INVALID_OPTION`,
-  `ERR_VARIABLE_NAME_TOO_LONG`, `ERR_UNMATCHED_VARIABLE`). `UnmatchedVariableError` exposes the
-  offending name via `.variableName`
+  `ERR_VARIABLE_NAME_TOO_LONG`, `ERR_UNMATCHED_VARIABLE`, `ERR_INVALID_CHUNK_TYPE`).
+  `UnmatchedVariableError` exposes the offending name via `.variableName`
 - Fix a deadlock when a `Readable` replacement value larger than the readable buffer was consumed
   slowly
 - Fix over-long variable names resolving inconsistently depending on how the input was chunked
