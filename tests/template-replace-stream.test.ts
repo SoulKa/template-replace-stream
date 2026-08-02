@@ -141,6 +141,68 @@ describe("TemplateReplaceStream", () => {
     expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
   });
 
+  // Regression: `findVariableEnd` used `indexOf` to jump straight to the next boundary byte, but the
+  // `maxVariableNameLength` check only ran in the no-boundary branch. A single chunk could therefore
+  // jump past the limit to a closing end pattern and resolve an over-long name, while a chunk-split
+  // stream abandoned the same name at the limit — the outcome depended on how the input was chunked.
+  // The name (200 bytes) exceeds the limit (100), so it must be left untouched at every chunk size.
+  it("does not resolve a variable name longer than maxVariableNameLength that closes with an end pattern", async () => {
+    const name = "a".repeat(200);
+    const input = `{{${name}}}`;
+    const map = new Map([[name, "X"]]);
+    for (const chunkSize of [1, 7, 50, 4096]) {
+      const readable = new FixedChunkSizeReadStream(input, chunkSize);
+      const stream = new TemplateReplaceStream(map, { maxVariableNameLength: 100 });
+      expect(await streamToString(readable.pipe(stream))).toBe(input);
+    }
+  });
+
+  it("throws ERR_VARIABLE_NAME_TOO_LONG in a single chunk for an over-long name that closes with an end pattern", async () => {
+    // The same input as above but in a single chunk used to resolve silently instead of throwing.
+    const name = "a".repeat(200);
+    const error = await TemplateReplaceStream.replaceStringAsync(
+      `{{${name}}}`,
+      new Map([[name, "X"]]),
+      { maxVariableNameLength: 100, throwOnUnmatchedTemplate: true }
+    ).catch((e) => e);
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
+  });
+
+  it("still resolves a variable name just under maxVariableNameLength that closes with an end pattern", async () => {
+    // Boundary guard: the length cap must not reject names within the limit. A 9-byte name with a
+    // limit of 10 must still resolve in a single chunk.
+    const name = "a".repeat(9);
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      `{{${name}}}`,
+      new Map([[name, "X"]]),
+      { maxVariableNameLength: 10 }
+    );
+    expect(result).toBe("X");
+  });
+
+  it("abandons an over-long name that reopens a start pattern beyond the limit, consistently across chunk sizes", async () => {
+    // The name "a".repeat(10) exceeds the limit (4) before the reopened "{{b}}"; the reopened template
+    // still resolves and the outcome must not depend on chunking.
+    const input = "{{" + "a".repeat(10) + "{{b}}";
+    const map = new Map([["b", "B"]]);
+    for (const chunkSize of [1, 3, 4096]) {
+      const readable = new FixedChunkSizeReadStream(input, chunkSize);
+      const stream = new TemplateReplaceStream(map, { maxVariableNameLength: 4 });
+      expect(await streamToString(readable.pipe(stream))).toBe("{{" + "a".repeat(10) + "B");
+    }
+  });
+
+  it("throws in a single chunk for an over-long name that reopens a start pattern beyond the limit", async () => {
+    const error = await TemplateReplaceStream.replaceStringAsync(
+      "{{" + "a".repeat(10) + "{{b}}",
+      new Map([["b", "B"]]),
+      { maxVariableNameLength: 4, throwOnUnmatchedTemplate: true }
+    ).catch((e) => e);
+    expect(error).toBeInstanceOf(TemplateReplaceStreamError);
+    expect(error.code).toBe("ERR_VARIABLE_NAME_TOO_LONG");
+  });
+
   it("should not let the internal buffer grow with the input on an unterminated end-byte run", async () => {
     // Stream "{{" then ~200KB of "}x". Every lone "}" leaves the name unterminated. The fix abandons
     // the over-long name and releases the buffer as it scans, so the residual stack observed between

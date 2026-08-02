@@ -317,33 +317,34 @@ export class TemplateReplaceStream extends Transform {
    * Stateful function to find the end of a variable in the stack. If the end pattern is found, the
    * state is set to searching end pattern. If the maximum variable name length is reached, or a start
    * pattern symbol is found, the state is set to searching start pattern.
+   *
+   * A boundary byte (end- or start-pattern first byte) is only honored while the variable name is
+   * still within {@link TemplateReplaceStreamOptions.maxVariableNameLength}: the start pattern stays
+   * pinned at `_stack[0]`, so a boundary at index `>= _startPattern.length + maxVariableNameLength`
+   * sits past the last byte a valid name may occupy and is ignored, abandoning the over-long name.
+   * Capping the search this way is what makes the outcome independent of how the input was chunked —
+   * a single chunk abandons at exactly the same byte a chunk-split stream does (which can only ever
+   * see the name grow one boundary-free byte at a time until it hits the limit).
    */
   private findVariableEnd() {
-    const nextEndIndex = this._stack.indexOf(this._endPattern[0], this._stackIndex);
-    const nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
+    // The first stack index a valid variable name may no longer reach. `_stackIndex - _startPattern
+    // .length` is the name length so far (the start pattern is pinned at `_stack[0]`), so a name is
+    // over-long once its bytes reach this index.
+    const overlongIndex = this._startPattern.length + this._options.maxVariableNameLength;
+    let nextEndIndex = this._stack.indexOf(this._endPattern[0], this._stackIndex);
+    let nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
+    // Ignore boundaries at or beyond the length limit; the name is abandoned before reaching them.
+    if (nextEndIndex >= overlongIndex) nextEndIndex = -1;
+    if (nextStartIndex >= overlongIndex) nextStartIndex = -1;
 
     if (nextEndIndex === -1 && nextStartIndex === -1) {
-      // No boundary byte in the remaining stack, so the whole rest belongs to the variable name. The
-      // start pattern stays pinned at `_stack[0]` for the entire scan, so the name length so far is
-      // simply `_stackIndex - _startPattern.length` — no need to thread it through `_matchCount`.
+      // No boundary byte within the length limit. Either the whole limit window is present with no
+      // boundary in it — the name is over-long and abandoned — or we simply need more data.
       this._stackIndex = this._stack.length;
-      if (this._stackIndex - this._startPattern.length < this._options.maxVariableNameLength) {
+      if (this._stackIndex < overlongIndex) {
         return; // need more data
       }
-
-      // The variable name reached the maximum length without a closing pattern. Abandon it and
-      // resume searching for the next start pattern. `_stackIndex` is already at the end of the stack
-      // so `releaseStack` leaves it at 0, and `_matchCount` must be 0 for the next `findStartPattern`
-      // (leaving it non-zero would make the `_transform` loop spin forever — a synchronous hang).
-      this._state = State.SEARCHING_START_PATTERN;
-      this._matchCount = 0;
-      if (this._options.throwOnUnmatchedTemplate)
-        throw new TemplateReplaceStreamError(
-          "Variable name processing reached limit",
-          "ERR_VARIABLE_NAME_TOO_LONG"
-        );
-      if (this._options.log) console.debug("Variable name processing reached limit, skipping");
-      this.releaseStack(this._stack.length);
+      this.abandonOverlongVariableName(overlongIndex);
       return; // no match
     }
 
@@ -361,6 +362,31 @@ export class TemplateReplaceStream extends Transform {
       this.releaseStack(nextStartIndex);
     }
     this._matchCount = 1;
+  }
+
+  /**
+   * Abandons the variable name currently being scanned because it reached
+   * {@link TemplateReplaceStreamOptions.maxVariableNameLength} without a closing end pattern within
+   * the limit. The start pattern and the name bytes up to `releaseIndex` are emitted verbatim and the
+   * stream resumes searching for the next start pattern from there. `releaseIndex` is always the limit
+   * position, so a single-chunk input abandons at the same byte a chunk-split stream would.
+   *
+   * `_matchCount` must be reset to 0 for the next {@link findStartPattern} (leaving it non-zero would
+   * make the `_transform` loop spin forever — a synchronous hang).
+   *
+   * @param releaseIndex The number of leading stack bytes to emit verbatim before resuming the search
+   */
+  private abandonOverlongVariableName(releaseIndex: number) {
+    this._state = State.SEARCHING_START_PATTERN;
+    this._matchCount = 0;
+    if (this._options.throwOnUnmatchedTemplate)
+      throw new TemplateReplaceStreamError(
+        "Variable name processing reached limit",
+        "ERR_VARIABLE_NAME_TOO_LONG"
+      );
+    if (this._options.log) console.debug("Variable name processing reached limit, skipping");
+    this._stackIndex = releaseIndex;
+    this.releaseStack(releaseIndex);
   }
 
   /**
