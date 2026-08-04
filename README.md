@@ -8,7 +8,7 @@
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
 This module is written in pure TypeScript, consists of only 284 lines of code (including type
-definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
+definitions) and has no other dependencies. It is flexible and allows replacing an arbitrarily wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
 
@@ -23,17 +23,18 @@ definitions. It requires Node.js `>=22`.
 
 ### Supported Node.js Versions
 
-The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
+The CI runs the test suite on every Node.js release line from 22 on:
 
-| 22.x | 24.x |
-| --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| 22.x | 23.x | 24.x | 25.x | 26.x |
+| --- | --- | --- | --- | --- |
+| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
 
 ## Usage
 
 You create a `TemplateReplaceStream` by passing a source of template variables and their replacement
 values to the constructor. This may either be a map containing key-value pairs, or a function that
-returns a replacement value for a given template string.
+returns a replacement value for a given template string. Variable names are trimmed, so
+`{{ replace-me }}` (with surrounding whitespace) matches the key `"replace-me"`.
 
 ### JavaScript
 
@@ -248,12 +249,12 @@ try {
 
 ## Benchmarks
 
-The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual
-files generated from- and to memory to omit any bottleneck due to the file system. The "native" data
-refers to reading a virtual file without doing anything else with it (native `fs.Readable` streams).
-So they are the absolute highest possible.
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data sources were virtual
+files generated from and to memory to omit any bottleneck due to the file system. The "native" data
+refers to reading a virtual file without doing anything else with it (native `fs.Readable` streams),
+so it marks the upper bound of what is possible.
 
-## Replacing a single Template Variable in a large File
+### Replacing a single Template Variable in a large File
 
 ![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
@@ -265,10 +266,10 @@ a 100MiB file.
 ![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
 
 Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateReplaceStream`. Reading
-the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` packages
-was omitted im this graph, as it took over 16s to process the 100MiB file.
+the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` package
+was omitted in this graph, as it took over 16s to process the 100MiB file.
 
-## Replacing 10 thousand Template Variables in a large File
+### Replacing 10 thousand Template Variables in a large File
 
 ![Throughput vs. File Size when replacing a 10K Variables](benchmarks/plots/throughput-vs-data-size-with-10k-replacement.png)
 
@@ -347,3 +348,7 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 ### 1.0.0
 
 - Initial Release
+
+## License
+
+[MIT](LICENSE)
