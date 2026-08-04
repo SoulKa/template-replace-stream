@@ -1,6 +1,6 @@
 {
   "name": "template-replace-stream",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "A high performance template replace stream working on binary or string streams",
   "type": "module",
   "main": "./dist/index.js",

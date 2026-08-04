@@ -154,6 +154,18 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
 
+### 3.0.1
+
+- Fix `replaceAsync()` and `replaceStringAsync()` hanging when the input stream errors — the error
+  now rejects the returned promise
+- Fix a variable name of exactly `maxVariableNameLength` being treated as over-long — the limit is
+  now inclusive
+- Fix a replacement value `Readable` (e.g. an open file) leaking when the stream is destroyed
+  mid-replacement — destroying the `TemplateReplaceStream` now also destroys the in-flight value
+  stream
+- Rework the examples: ESM-only JavaScript, a resolver function in TypeScript, and a new one-shot
+  `replaceAsync()` example
+
 ### 3.0.0
 
 - **Breaking:** the package is now ESM only and requires Node.js `>=22`. CommonJS `require()` is no
