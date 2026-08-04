@@ -1,4 +1,6 @@
 import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { buffer } from "node:stream/consumers";
 
 /**
  * Options for the template replace stream.
@@ -126,6 +128,7 @@ export class TemplateReplaceStream extends Transform {
   private _matchCount: number = 0;
   private _stackIndex: number = 0;
   private _readWaiter: (() => void) | null = null;
+  private _activeValueStream: Readable | null = null;
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
@@ -183,17 +186,9 @@ export class TemplateReplaceStream extends Transform {
     options?: Partial<TemplateReplaceStreamOptions>
   ) {
     const stream = new TemplateReplaceStream(variables, options);
-    if (input instanceof Readable) {
-      input.pipe(stream);
-    } else {
-      stream.end(input);
-    }
-
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    return Buffer.concat(chunks);
+    if (input instanceof Readable) return pipeline(input, stream, buffer);
+    stream.end(input);
+    return buffer(stream);
   }
 
   /**
@@ -334,17 +329,20 @@ export class TemplateReplaceStream extends Transform {
    *
    * A boundary byte (end- or start-pattern first byte) is only honored while the variable name is
    * still within {@link TemplateReplaceStreamOptions.maxVariableNameLength}: the start pattern stays
-   * pinned at `_stack[0]`, so a boundary at index `>= _startPattern.length + maxVariableNameLength`
+   * pinned at `_stack[0]`, so a boundary at index `> _startPattern.length + maxVariableNameLength`
    * sits past the last byte a valid name may occupy and is ignored, abandoning the over-long name.
-   * Capping the search this way is what makes the outcome independent of how the input was chunked —
-   * a single chunk abandons at exactly the same byte a chunk-split stream does (which can only ever
-   * see the name grow one boundary-free byte at a time until it hits the limit).
+   * The limit is inclusive — a name whose length equals `maxVariableNameLength` still matches; only a
+   * name *longer* than the limit is abandoned. Capping the search this way is what makes the outcome
+   * independent of how the input was chunked — a single chunk abandons at exactly the same byte a
+   * chunk-split stream does (which can only ever see the name grow one boundary-free byte at a time
+   * until it passes the limit).
    */
   private findVariableEnd() {
     // The first stack index a valid variable name may no longer reach. `_stackIndex - _startPattern
-    // .length` is the name length so far (the start pattern is pinned at `_stack[0]`), so a name is
-    // over-long once its bytes reach this index.
-    const overlongIndex = this._startPattern.length + this._options.maxVariableNameLength;
+    // .length` is the name length so far (the start pattern is pinned at `_stack[0]`). The `+ 1` makes
+    // the limit inclusive: a boundary at `_startPattern.length + maxVariableNameLength` (a name of
+    // exactly the limit length) is still honored; only a name one byte longer is over-long.
+    const overlongIndex = this._startPattern.length + this._options.maxVariableNameLength + 1;
     let nextEndIndex = this._stack.indexOf(this._endPattern[0], this._stackIndex);
     let nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
     // Ignore boundaries at or beyond the length limit; the name is abandoned before reaching them.
@@ -483,14 +481,37 @@ export class TemplateReplaceStream extends Transform {
   }
 
   private async writeStreamToOutput(stream: Readable) {
-    for await (const chunk of stream) {
-      // `push` feeds the readable side; when it returns false the readable buffer is full and the
-      // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
-      // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
-      if (!this.push(chunk)) {
-        await new Promise<void>((resolve) => (this._readWaiter = resolve));
+    this._activeValueStream = stream;
+    try {
+      for await (const chunk of stream) {
+        // `push` feeds the readable side; when it returns false the readable buffer is full and the
+        // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
+        // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
+        if (!this.push(chunk)) {
+          await new Promise<void>((resolve) => (this._readWaiter = resolve));
+          // The transform may have been destroyed while parked; stop feeding a dead stream.
+          if (this.destroyed) break;
+        }
       }
+    } finally {
+      this._activeValueStream = null;
     }
+  }
+
+  /**
+   * Tears down cleanly when the transform is destroyed. Wakes a value-stream writer parked in
+   * {@link writeStreamToOutput} (otherwise its promise never resolves) and destroys any in-flight
+   * replacement {@link Readable} so its underlying resource (file descriptor, socket, …) is released
+   * rather than leaked.
+   */
+  _destroy(error: Error | null, callback: (error?: Error | null) => void) {
+    const resolve = this._readWaiter;
+    this._readWaiter = null;
+    resolve?.();
+    const valueStream = this._activeValueStream;
+    this._activeValueStream = null;
+    if (valueStream && !valueStream.destroyed) valueStream.destroy(error ?? undefined);
+    callback(error);
   }
 
   /**
