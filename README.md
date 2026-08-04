@@ -37,12 +37,12 @@ values to the constructor. This may either be a map containing key-value pairs, 
 returns a replacement value for a given template string. Variable names are trimmed, so
 `{{ replace-me }}` (with surrounding whitespace) matches the key `"replace-me"`.
 
-### JavaScript
+### Basic Usage
 
-This example replaces the template variables from a `Map`. Every occurrence of `{{ replace-me }}`
-in the template file is replaced with the value stored under the key `"replace-me"`:
+Pass a `Map` of variable names to their replacement values. Every occurrence of `{{ replace-me }}`
+in the template is replaced with the value stored under the key `"replace-me"`.
 
-```js
+```ts
 import { TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
@@ -53,7 +53,7 @@ const outputFilePath = path.join(import.meta.dirname, "example.txt");
 
 // map template variable names to their replacement values:
 // every "{{ replace-me }}" in the template becomes "really fast"
-const variables = new Map([["replace-me", "really fast"]]);
+const variables = new Map<string, string>([["replace-me", "really fast"]]);
 
 // read the template, replace the variables while streaming, and write the result
 fs.createReadStream(templateFilePath)
@@ -63,11 +63,11 @@ fs.createReadStream(templateFilePath)
 
 ```
 
-### TypeScript
+### Resolver Function
 
-The same works with a resolver function instead of a `Map`. It is called with each variable name
-found in the template and returns the replacement value — a `string`, `Buffer`, `Readable`, or a
-`Promise` of one of those:
+Instead of a `Map`, you can pass a function that computes a replacement value for each variable name
+the stream encounters. It may return a `string`, `Buffer`, `Readable`, or a `Promise` of those (the
+`StringSource` type), and returning `undefined` leaves that variable unmatched.
 
 ```ts
 import { TemplateReplaceStream, type StringSource } from "template-replace-stream";
@@ -78,8 +78,9 @@ import path from "node:path";
 const templateFilePath = path.join(import.meta.dirname, "template.txt");
 const outputFilePath = path.join(import.meta.dirname, "example.txt");
 
-// instead of a map, a resolver function can compute replacement values on demand.
-// It receives the variable name and may return a string, Buffer, Readable, or a Promise of those.
+// instead of a Map, a resolver function computes a replacement value per variable name.
+// It receives each name found in the template and may return a string, Buffer, Readable, or a
+// Promise of those (the StringSource type). Return undefined to leave a variable unmatched.
 function resolveVariable(variableName: string): StringSource {
   console.log(`Resolving variable "${variableName}"`);
   return "really fast";
@@ -136,9 +137,10 @@ import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(import.meta.dirname, "..");
 const exampleFiles = [
-  "javascript-example.js",
-  "typescript-example.ts",
+  "basic-example.ts",
+  "resolver-example.ts",
   "async-example.js",
+  "error-handling-example.ts",
   "generate-readme.ts",
 ];
 
@@ -237,15 +239,31 @@ Constructor errors are thrown synchronously; all others are emitted on the strea
 `replace*Async` helpers).
 
 ```ts
+import { Readable } from "node:stream";
 import { TemplateReplaceStream, UnmatchedVariableError } from "template-replace-stream";
 
+// With throwOnUnmatchedTemplate enabled, a variable that has no replacement value fails the
+// operation. Every error carries a stable `code` (prefer it over the human-readable message).
+function logError(error: unknown) {
+  if (error instanceof UnmatchedVariableError) {
+    console.error(`Unmatched variable "${error.variableName}" (code: ${error.code})`);
+  }
+}
+
+// the async helpers reject the returned promise
 try {
-  await TemplateReplaceStream.replaceStringAsync("{{ name }}", new Map(), {
+  await TemplateReplaceStream.replaceStringAsync("Hello {{ name }}", new Map(), {
     throwOnUnmatchedTemplate: true,
   });
-} catch (e) {
-  if (e instanceof UnmatchedVariableError) console.error(`Missing variable: ${e.variableName}`);
+} catch (error) {
+  logError(error);
 }
+
+// used directly as a stream, the same error is emitted on the "error" event instead
+Readable.from("Hello {{ name }}")
+  .pipe(new TemplateReplaceStream(new Map(), { throwOnUnmatchedTemplate: true }))
+  .on("error", logError);
+
 ```
 
 ## Benchmarks

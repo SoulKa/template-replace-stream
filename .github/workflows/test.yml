@@ -31,7 +31,7 @@ jobs:
       - name: Install and build
         run: |
           npm ci
-          npm run build:all
+          npm run build
       - name: Run tests
         if: ${{ !inputs.coverage }}
         run: npm run test

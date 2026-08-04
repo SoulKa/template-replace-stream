@@ -6,9 +6,10 @@ import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(import.meta.dirname, "..");
 const exampleFiles = [
-  "javascript-example.js",
-  "typescript-example.ts",
+  "basic-example.ts",
+  "resolver-example.ts",
   "async-example.js",
+  "error-handling-example.ts",
   "generate-readme.ts",
 ];
 

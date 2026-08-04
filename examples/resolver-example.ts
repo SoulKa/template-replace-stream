@@ -6,8 +6,9 @@ import path from "node:path";
 const templateFilePath = path.join(import.meta.dirname, "template.txt");
 const outputFilePath = path.join(import.meta.dirname, "example.txt");
 
-// instead of a map, a resolver function can compute replacement values on demand.
-// It receives the variable name and may return a string, Buffer, Readable, or a Promise of those.
+// instead of a Map, a resolver function computes a replacement value per variable name.
+// It receives each name found in the template and may return a string, Buffer, Readable, or a
+// Promise of those (the StringSource type). Return undefined to leave a variable unmatched.
 function resolveVariable(variableName: string): StringSource {
   console.log(`Resolving variable "${variableName}"`);
   return "really fast";

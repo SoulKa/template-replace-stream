@@ -8,7 +8,7 @@ const outputFilePath = path.join(import.meta.dirname, "example.txt");
 
 // map template variable names to their replacement values:
 // every "{{ replace-me }}" in the template becomes "really fast"
-const variables = new Map([["replace-me", "really fast"]]);
+const variables = new Map<string, string>([["replace-me", "really fast"]]);
 
 // read the template, replace the variables while streaming, and write the result
 fs.createReadStream(templateFilePath)

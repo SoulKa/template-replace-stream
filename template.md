@@ -37,23 +37,23 @@ values to the constructor. This may either be a map containing key-value pairs, 
 returns a replacement value for a given template string. Variable names are trimmed, so
 `{{ replace-me }}` (with surrounding whitespace) matches the key `"replace-me"`.
 
-### JavaScript
+### Basic Usage
 
-This example replaces the template variables from a `Map`. Every occurrence of `{{ replace-me }}`
-in the template file is replaced with the value stored under the key `"replace-me"`:
-
-```js
-{{ javascript-example.js }}
-```
-
-### TypeScript
-
-The same works with a resolver function instead of a `Map`. It is called with each variable name
-found in the template and returns the replacement value — a `string`, `Buffer`, `Readable`, or a
-`Promise` of one of those:
+Pass a `Map` of variable names to their replacement values. Every occurrence of `{{ replace-me }}`
+in the template is replaced with the value stored under the key `"replace-me"`.
 
 ```ts
-{{ typescript-example.ts }}
+{{ basic-example.ts }}
+```
+
+### Resolver Function
+
+Instead of a `Map`, you can pass a function that computes a replacement value for each variable name
+the stream encounters. It may return a `string`, `Buffer`, `Readable`, or a `Promise` of those (the
+`StringSource` type), and returning `undefined` leaves that variable unmatched.
+
+```ts
+{{ resolver-example.ts }}
 ```
 
 ### One-shot Replacement without Streams
@@ -107,15 +107,7 @@ Constructor errors are thrown synchronously; all others are emitted on the strea
 `replace*Async` helpers).
 
 ```ts
-import { TemplateReplaceStream, UnmatchedVariableError } from "template-replace-stream";
-
-try {
-  await TemplateReplaceStream.replaceStringAsync("{{ name }}", new Map(), {
-    throwOnUnmatchedTemplate: true,
-  });
-} catch (e) {
-  if (e instanceof UnmatchedVariableError) console.error(`Missing variable: ${e.variableName}`);
-}
+{{ error-handling-example.ts }}
 ```
 
 ## Benchmarks
