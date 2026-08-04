@@ -5,10 +5,14 @@
   "description": "Example code for the template-replace-stream module",
   "type": "module",
   "scripts": {
-    "typescript": "node typescript-example.ts",
-    "javascript": "node javascript-example.cjs",
-    "build:readme": "node generate-readme.ts",
-    "postinstall": "npm link .."
+    "basic": "node basic-example.ts",
+    "resolver": "node resolver-example.ts",
+    "async": "node async-example.js",
+    "errors": "node error-handling-example.ts",
+    "build:readme": "node generate-readme.ts"
+  },
+  "dependencies": {
+    "template-replace-stream": "file:.."
   },
   "repository": {
     "type": "git",

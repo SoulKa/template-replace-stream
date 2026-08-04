@@ -783,4 +783,68 @@ describe("TemplateReplaceStream edge cases", () => {
     );
     expect(result).toBe("{{1}}");
   });
+
+  // Bug 1: `replaceAsync` piped the source with `input.pipe(stream)`, which does not forward source
+  // errors. A source error was left unhandled (crashing the process) and the awaiting consumer hung
+  // forever waiting for an `end` that never came.
+  it("rejects when the input stream errors instead of hanging", async () => {
+    const boom = new Readable({
+      read() {
+        this.destroy(new Error("source boom"));
+      },
+    });
+    await expect(TemplateReplaceStream.replaceStringAsync(boom, new Map())).rejects.toThrow(
+      "source boom"
+    );
+  });
+
+  // Bug 4: the length cap was off by one. The docs say a name *longer* than maxVariableNameLength is
+  // ignored, so a name whose length equals the limit must still resolve.
+  it("resolves a variable name whose length equals maxVariableNameLength", async () => {
+    const name = "a".repeat(100);
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      `{{${name}}}`,
+      new Map([[name, "X"]]),
+      { maxVariableNameLength: 100 }
+    );
+    expect(result).toBe("X");
+  });
+
+  it("resolves a name exactly at the limit consistently across chunk sizes", async () => {
+    const name = "a".repeat(50);
+    const input = `x{{${name}}}y`;
+    const map = new Map([[name, "X"]]);
+    for (const chunkSize of [1, 3, 50, 4096]) {
+      const readable = new FixedChunkSizeReadStream(input, chunkSize);
+      const stream = new TemplateReplaceStream(map, { maxVariableNameLength: 50 });
+      expect(await streamToString(readable.pipe(stream))).toBe("xXy");
+    }
+  });
+
+  it("still ignores a variable name one byte longer than maxVariableNameLength", async () => {
+    const name = "a".repeat(101);
+    const result = await TemplateReplaceStream.replaceStringAsync(
+      `{{${name}}}`,
+      new Map([[name, "X"]]),
+      { maxVariableNameLength: 100 }
+    );
+    expect(result).toBe(`{{${name}}}`);
+  });
+
+  // Bug 5: destroying the transform while a Readable replacement value was in flight left that value
+  // stream open (fd/socket leak) and the parked writer promise unresolved.
+  it("destroys an in-flight replacement value stream when the transform is destroyed", async () => {
+    const value = new Readable({ read() {} });
+    value.push(Buffer.alloc(64 * 1024, 0x61));
+    const trs = new TemplateReplaceStream(new Map([["a", value]]), {
+      streamOptions: { highWaterMark: 1 },
+    });
+    trs.on("error", () => {});
+    trs.pause();
+    trs.write("{{a}}");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    trs.destroy();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(value.destroyed).toBe(true);
+  });
 });

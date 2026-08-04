@@ -1,14 +1,14 @@
 # template-replace-stream
 
-[![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)
+[![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml)
 [![codecov](https://codecov.io/github/SoulKa/template-replace-stream/graph/badge.svg?token=JFCFRHKVL3)](https://codecov.io/github/SoulKa/template-replace-stream)
 [![npm version](https://badge.fury.io/js/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 [![Downloads](https://img.shields.io/npm/dm/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 292 lines of code (including type
-definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
+This module is written in pure TypeScript, consists of only 284 lines of code (including type
+definitions) and has no other dependencies. It is flexible and allows replacing an arbitrarily wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
 
@@ -23,57 +23,96 @@ definitions. It requires Node.js `>=22`.
 
 ### Supported Node.js Versions
 
-The following Node.js versions are tested to work with the package. Older versions are not tested but should still be able to use it.
+The CI runs the test suite on every Node.js release line from 22 on. Each badge reflects that
+version's own run:
 
-| 22.x | 24.x |
-| --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| 22.x | 23.x | 24.x | 25.x | 26.x |
+| --- | --- | --- | --- | --- |
+| [![22.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-22.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-22.yml) | [![23.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-23.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-23.yml) | [![24.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml) | [![25.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-25.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-25.yml) | [![26.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-26.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-26.yml) |
 
 ## Usage
 
 You create a `TemplateReplaceStream` by passing a source of template variables and their replacement
 values to the constructor. This may either be a map containing key-value pairs, or a function that
-returns a replacement value for a given template string.
+returns a replacement value for a given template string. Variable names are trimmed, so
+`{{ replace-me }}` (with surrounding whitespace) matches the key `"replace-me"`.
 
-### JavaScript
+### Basic Usage
 
-```js
-const { TemplateReplaceStream } = require("template-replace-stream");
-const fs = require("node:fs");
-const path = require("node:path");
-
-// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
-const variables = new Map([["replace-me", "really fast"]]);
-
-// create the streams
-const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
-const templateReplaceStream = new TemplateReplaceStream(variables);
-
-// connect the streams and put the template replace stream in the middle
-readStream.pipe(templateReplaceStream).pipe(writeStream);
-writeStream.on("finish", () => console.log("Finished writing example.txt"));
-
-```
-
-### TypeScript
+Pass a `Map` of variable names to their replacement values. Every occurrence of `{{ replace-me }}`
+in the template is replaced with the value stored under the key `"replace-me"`.
 
 ```ts
 import { TemplateReplaceStream } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 
-// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
+// template.txt contains the text: Hello, this library is {{ replace-me }} :)
+const templateFilePath = path.join(import.meta.dirname, "template.txt");
+const outputFilePath = path.join(import.meta.dirname, "example.txt");
+
+// map template variable names to their replacement values:
+// every "{{ replace-me }}" in the template becomes "really fast"
+const variables = new Map<string, string>([["replace-me", "really fast"]]);
+
+// read the template, replace the variables while streaming, and write the result
+fs.createReadStream(templateFilePath)
+  .pipe(new TemplateReplaceStream(variables))
+  .pipe(fs.createWriteStream(outputFilePath))
+  .on("finish", () => console.log(`Wrote "Hello, this library is really fast :)" to example.txt`));
+
+```
+
+### Resolver Function
+
+Instead of a `Map`, you can pass a function that computes a replacement value for each variable name
+the stream encounters. It may return a `string`, `Buffer`, `Readable`, or a `Promise` of those (the
+`StringSource` type), and returning `undefined` leaves that variable unmatched.
+
+```ts
+import { TemplateReplaceStream, type StringSource } from "template-replace-stream";
+import fs from "node:fs";
+import path from "node:path";
+
+// template.txt contains the text: Hello, this library is {{ replace-me }} :)
+const templateFilePath = path.join(import.meta.dirname, "template.txt");
+const outputFilePath = path.join(import.meta.dirname, "example.txt");
+
+// instead of a Map, a resolver function computes a replacement value per variable name.
+// It receives each name found in the template and may return a string, Buffer, Readable, or a
+// Promise of those (the StringSource type). Return undefined to leave a variable unmatched.
+function resolveVariable(variableName: string): StringSource {
+  console.log(`Resolving variable "${variableName}"`);
+  return "really fast";
+}
+
+// read the template, replace the variables while streaming, and write the result
+fs.createReadStream(templateFilePath)
+  .pipe(new TemplateReplaceStream(resolveVariable))
+  .pipe(fs.createWriteStream(outputFilePath))
+  .on("finish", () => console.log(`Wrote "Hello, this library is really fast :)" to example.txt`));
+
+```
+
+### One-shot Replacement without Streams
+
+If you just want the replaced result and don't need streaming, the static helpers
+`replaceStringAsync()` (resolves to a `string`) and `replaceAsync()` (resolves to a `Buffer`) wrap
+the whole pipeline in a single call. They hold the full output in memory, so avoid them for large
+inputs:
+
+```js
+import { TemplateReplaceStream } from "template-replace-stream";
+
+const template = "Hello, this library is {{ replace-me }} :)";
 const variables = new Map([["replace-me", "really fast"]]);
 
-// create the streams
-const readStream = fs.createReadStream(path.join(import.meta.dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(import.meta.dirname, "example.txt"));
-const templateReplaceStream = new TemplateReplaceStream(variables);
+// resolves to a string; the input may be a string, Buffer, or Readable
+console.log(await TemplateReplaceStream.replaceStringAsync(template, variables));
 
-// connect the streams and put the template replace stream in the middle
-readStream.pipe(templateReplaceStream).pipe(writeStream);
-writeStream.on("finish", () => console.log("Finished writing example.txt"));
+// same, but resolves to a Buffer (e.g. for binary templates)
+const buffer = await TemplateReplaceStream.replaceAsync(template, variables);
+console.log(buffer.toString());
 
 ```
 
@@ -97,7 +136,13 @@ import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(import.meta.dirname, "..");
-const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
+const exampleFiles = [
+  "basic-example.ts",
+  "resolver-example.ts",
+  "async-example.js",
+  "error-handling-example.ts",
+  "generate-readme.ts",
+];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");
@@ -194,25 +239,41 @@ Constructor errors are thrown synchronously; all others are emitted on the strea
 `replace*Async` helpers).
 
 ```ts
+import { Readable } from "node:stream";
 import { TemplateReplaceStream, UnmatchedVariableError } from "template-replace-stream";
 
+// With throwOnUnmatchedTemplate enabled, a variable that has no replacement value fails the
+// operation. Every error carries a stable `code` (prefer it over the human-readable message).
+function logError(error: unknown) {
+  if (error instanceof UnmatchedVariableError) {
+    console.error(`Unmatched variable "${error.variableName}" (code: ${error.code})`);
+  }
+}
+
+// the async helpers reject the returned promise
 try {
-  await TemplateReplaceStream.replaceStringAsync("{{ name }}", new Map(), {
+  await TemplateReplaceStream.replaceStringAsync("Hello {{ name }}", new Map(), {
     throwOnUnmatchedTemplate: true,
   });
-} catch (e) {
-  if (e instanceof UnmatchedVariableError) console.error(`Missing variable: ${e.variableName}`);
+} catch (error) {
+  logError(error);
 }
+
+// used directly as a stream, the same error is emitted on the "error" event instead
+Readable.from("Hello {{ name }}")
+  .pipe(new TemplateReplaceStream(new Map(), { throwOnUnmatchedTemplate: true }))
+  .on("error", logError);
+
 ```
 
 ## Benchmarks
 
-The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data source were virtual
-files generated from- and to memory to omit any bottleneck due to the file system. The "native" data
-refers to reading a virtual file without doing anything else with it (native `fs.Readable` streams).
-So they are the absolute highest possible.
+The benchmarks were run on my MacBook Pro with an Apple M1 Pro Chip. The data sources were virtual
+files generated from and to memory to omit any bottleneck due to the file system. The "native" data
+refers to reading a virtual file without doing anything else with it (native `fs.Readable` streams),
+so it marks the upper bound of what is possible.
 
-## Replacing a single Template Variable in a large File
+### Replacing a single Template Variable in a large File
 
 ![Throughput vs. File Size when replacing a single Variable](benchmarks/plots/throughput-vs-data-size-with-one-replacement.png)
 
@@ -224,10 +285,10 @@ a 100MiB file.
 ![Duration vs File Size when replacing a single Variable](benchmarks/plots/size-vs-duration-with-one-replacement.png)
 
 Replacing a single variable in a 100MiB file takes only 6ms using a `TemplateReplaceStream`. Reading
-the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` packages
-was omitted im this graph, as it took over 16s to process the 100MiB file.
+the whole file from the disk alone takes already more than 1ms. The `stream-replace-string` package
+was omitted in this graph, as it took over 16s to process the 100MiB file.
 
-## Replacing 10 thousand Template Variables in a large File
+### Replacing 10 thousand Template Variables in a large File
 
 ![Throughput vs. File Size when replacing a 10K Variables](benchmarks/plots/throughput-vs-data-size-with-10k-replacement.png)
 
@@ -242,6 +303,18 @@ around 10ms. Since this duration is similar for smaller file sizes, we can see t
 perform too well in the 1MiB file. We will keep optimizing for that.
 
 ## Changelog
+
+### 3.0.1
+
+- Fix `replaceAsync()` and `replaceStringAsync()` hanging when the input stream errors — the error
+  now rejects the returned promise
+- Fix a variable name of exactly `maxVariableNameLength` being treated as over-long — the limit is
+  now inclusive
+- Fix a replacement value `Readable` (e.g. an open file) leaking when the stream is destroyed
+  mid-replacement — destroying the `TemplateReplaceStream` now also destroys the in-flight value
+  stream
+- Rework the examples: ESM-only JavaScript, a resolver function in TypeScript, and a new one-shot
+  `replaceAsync()` example
 
 ### 3.0.0
 
@@ -294,3 +367,7 @@ perform too well in the 1MiB file. We will keep optimizing for that.
 ### 1.0.0
 
 - Initial Release
+
+## License
+
+[MIT](LICENSE)

@@ -1,4 +1,6 @@
 import { Readable, Transform, TransformCallback, TransformOptions } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { buffer } from "node:stream/consumers";
 
 /**
  * Options for the template replace stream.
@@ -106,7 +108,6 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   maxVariableNameLength: 100,
   startPattern: Buffer.from("{{", "ascii"),
   endPattern: Buffer.from("}}", "ascii"),
-  streamOptions: undefined,
 };
 
 /**
@@ -126,6 +127,7 @@ export class TemplateReplaceStream extends Transform {
   private _matchCount: number = 0;
   private _stackIndex: number = 0;
   private _readWaiter: (() => void) | null = null;
+  private _activeValueStream: Readable | null = null;
 
   private readonly _startPattern: Buffer;
   private readonly _endPattern: Buffer;
@@ -143,22 +145,15 @@ export class TemplateReplaceStream extends Transform {
    */
   constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
     const _options = { ...DEFAULT_OPTIONS, ...options };
+    let optionError: string | undefined;
     if (_options.maxVariableNameLength <= 0) {
-      throw new TemplateReplaceStreamError(
-        "The maximum variable name length must be greater than 0",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The maximum variable name length must be greater than 0";
     } else if (_options.startPattern.length === 0) {
-      throw new TemplateReplaceStreamError(
-        "The start pattern must not be empty",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The start pattern must not be empty";
     } else if (_options.endPattern.length === 0) {
-      throw new TemplateReplaceStreamError(
-        "The end pattern must not be empty",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The end pattern must not be empty";
     }
+    if (optionError) throw new TemplateReplaceStreamError(optionError, "ERR_INVALID_OPTION");
 
     super(_options.streamOptions);
 
@@ -183,17 +178,8 @@ export class TemplateReplaceStream extends Transform {
     options?: Partial<TemplateReplaceStreamOptions>
   ) {
     const stream = new TemplateReplaceStream(variables, options);
-    if (input instanceof Readable) {
-      input.pipe(stream);
-    } else {
-      stream.end(input);
-    }
-
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    return Buffer.concat(chunks);
+    if (input instanceof Readable) return pipeline(input, stream, buffer);
+    return buffer(stream.end(input));
   }
 
   /**
@@ -227,11 +213,7 @@ export class TemplateReplaceStream extends Transform {
       }
 
       // if there is text left from last iteration, prepend it to the chunk
-      if (this._stack.length === 0) {
-        this._stack = chunk;
-      } else {
-        this._stack = Buffer.concat([this._stack, chunk]);
-      }
+      this._stack = this._stack.length === 0 ? chunk : Buffer.concat([this._stack, chunk]);
 
       while (this._stackIndex < this._stack.length) {
         switch (this._state) {
@@ -247,10 +229,9 @@ export class TemplateReplaceStream extends Transform {
         }
       }
     } catch (e) {
-      callback(
+      return callback(
         e instanceof Error ? e : new TemplateReplaceStreamError(`${e}`, undefined, { cause: e })
       );
-      return;
     }
 
     callback();
@@ -334,17 +315,20 @@ export class TemplateReplaceStream extends Transform {
    *
    * A boundary byte (end- or start-pattern first byte) is only honored while the variable name is
    * still within {@link TemplateReplaceStreamOptions.maxVariableNameLength}: the start pattern stays
-   * pinned at `_stack[0]`, so a boundary at index `>= _startPattern.length + maxVariableNameLength`
+   * pinned at `_stack[0]`, so a boundary at index `> _startPattern.length + maxVariableNameLength`
    * sits past the last byte a valid name may occupy and is ignored, abandoning the over-long name.
-   * Capping the search this way is what makes the outcome independent of how the input was chunked —
-   * a single chunk abandons at exactly the same byte a chunk-split stream does (which can only ever
-   * see the name grow one boundary-free byte at a time until it hits the limit).
+   * The limit is inclusive — a name whose length equals `maxVariableNameLength` still matches; only a
+   * name *longer* than the limit is abandoned. Capping the search this way is what makes the outcome
+   * independent of how the input was chunked — a single chunk abandons at exactly the same byte a
+   * chunk-split stream does (which can only ever see the name grow one boundary-free byte at a time
+   * until it passes the limit).
    */
   private findVariableEnd() {
     // The first stack index a valid variable name may no longer reach. `_stackIndex - _startPattern
-    // .length` is the name length so far (the start pattern is pinned at `_stack[0]`), so a name is
-    // over-long once its bytes reach this index.
-    const overlongIndex = this._startPattern.length + this._options.maxVariableNameLength;
+    // .length` is the name length so far (the start pattern is pinned at `_stack[0]`). The `+ 1` makes
+    // the limit inclusive: a boundary at `_startPattern.length + maxVariableNameLength` (a name of
+    // exactly the limit length) is still honored; only a name one byte longer is over-long.
+    const overlongIndex = this._startPattern.length + this._options.maxVariableNameLength + 1;
     let nextEndIndex = this._stack.indexOf(this._endPattern[0], this._stackIndex);
     let nextStartIndex = this._stack.indexOf(this._startPattern[0], this._stackIndex);
     // Ignore boundaries at or beyond the length limit; the name is abandoned before reaching them.
@@ -450,12 +434,11 @@ export class TemplateReplaceStream extends Transform {
    * Gets the value of a variable from the map by its name.
    *
    * @param variableBuffer The buffer containing the variable name
-   * @returns The value of the variable as buffer or undefined if it was not found
+   * @returns The resolved value, or `undefined` if the variable has no replacement
    */
   private async getValueOfVariable(variableBuffer: Buffer) {
     const variableName = variableBuffer.toString().trim();
-    let value = this._resolveVariable(variableName);
-    if (value instanceof Promise) value = await value;
+    const value = await this._resolveVariable(variableName);
 
     if (value !== undefined) {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
@@ -470,8 +453,6 @@ export class TemplateReplaceStream extends Transform {
    * Writes the given string source to the output stream. If the source is a readable stream, it is
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
    *
-   * If the source is a promise, it is awaited before writing.
-   *
    * @param stringSource The source to write to the output stream
    */
   private async writeToOutput(stringSource: StringContent) {
@@ -483,14 +464,34 @@ export class TemplateReplaceStream extends Transform {
   }
 
   private async writeStreamToOutput(stream: Readable) {
-    for await (const chunk of stream) {
-      // `push` feeds the readable side; when it returns false the readable buffer is full and the
-      // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
-      // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
-      if (!this.push(chunk)) {
-        await new Promise<void>((resolve) => (this._readWaiter = resolve));
+    this._activeValueStream = stream;
+    try {
+      for await (const chunk of stream) {
+        // `push` feeds the readable side; when it returns false the readable buffer is full and the
+        // signal to resume is the consumer's next `_read`, not a writable-side "drain" (which never
+        // fires for the already-flushed template and would deadlock). Park until `_read` resolves us.
+        if (!this.push(chunk)) {
+          await new Promise<void>((resolve) => (this._readWaiter = resolve));
+          // The transform may have been destroyed while parked; stop feeding a dead stream.
+          if (this.destroyed) break;
+        }
       }
+    } finally {
+      this._activeValueStream = null;
     }
+  }
+
+  /**
+   * Tears down cleanly when the transform is destroyed: destroys an in-flight replacement
+   * {@link Readable} so its resource (file descriptor, socket, …) is not leaked, and wakes a
+   * value-stream writer parked in {@link writeStreamToOutput} (its promise would never resolve
+   * otherwise, as `_read` no longer fires).
+   */
+  _destroy(error: Error | null, callback: (error?: Error | null) => void) {
+    this._activeValueStream?.destroy(error ?? undefined);
+    this._readWaiter?.();
+    this._readWaiter = null;
+    callback(error);
   }
 
   /**
@@ -500,9 +501,8 @@ export class TemplateReplaceStream extends Transform {
    * Node and awaits {@link writeStreamToOutput} inline, so a single resolver suffices.
    */
   _read(size: number) {
-    const resolve = this._readWaiter;
+    this._readWaiter?.();
     this._readWaiter = null;
-    resolve?.();
     super._read(size);
   }
 

@@ -5,7 +5,13 @@ import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(import.meta.dirname, "..");
-const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
+const exampleFiles = [
+  "basic-example.ts",
+  "resolver-example.ts",
+  "async-example.js",
+  "error-handling-example.ts",
+  "generate-readme.ts",
+];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");
