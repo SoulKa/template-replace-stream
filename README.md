@@ -7,7 +7,7 @@
 
 A high performance `{{ template }}` replace stream working on binary or string streams.
 
-This module is written in pure TypeScript, consists of only 292 lines of code (including type
+This module is written in pure TypeScript, consists of only 284 lines of code (including type
 definitions) and has no other dependencies. It is flexible and allows replacing an arbitrary wide
 range of template variables while being extremely fast (we reached over 20GiB/s,
 see [Benchmarks](#benchmarks)).
@@ -37,43 +37,79 @@ returns a replacement value for a given template string.
 
 ### JavaScript
 
-```js
-const { TemplateReplaceStream } = require("template-replace-stream");
-const fs = require("node:fs");
-const path = require("node:path");
+This example replaces the template variables from a `Map`. Every occurrence of `{{ replace-me }}`
+in the template file is replaced with the value stored under the key `"replace-me"`:
 
-// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
+```js
+import { TemplateReplaceStream } from "template-replace-stream";
+import fs from "node:fs";
+import path from "node:path";
+
+// template.txt contains the text: Hello, this library is {{ replace-me }} :)
+const templateFilePath = path.join(import.meta.dirname, "template.txt");
+const outputFilePath = path.join(import.meta.dirname, "example.txt");
+
+// map template variable names to their replacement values:
+// every "{{ replace-me }}" in the template becomes "really fast"
 const variables = new Map([["replace-me", "really fast"]]);
 
-// create the streams
-const readStream = fs.createReadStream(path.join(__dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(__dirname, "example.txt"));
-const templateReplaceStream = new TemplateReplaceStream(variables);
-
-// connect the streams and put the template replace stream in the middle
-readStream.pipe(templateReplaceStream).pipe(writeStream);
-writeStream.on("finish", () => console.log("Finished writing example.txt"));
+// read the template, replace the variables while streaming, and write the result
+fs.createReadStream(templateFilePath)
+  .pipe(new TemplateReplaceStream(variables))
+  .pipe(fs.createWriteStream(outputFilePath))
+  .on("finish", () => console.log(`Wrote "Hello, this library is really fast :)" to example.txt`));
 
 ```
 
 ### TypeScript
 
+The same works with a resolver function instead of a `Map`. It is called with each variable name
+found in the template and returns the replacement value — a `string`, `Buffer`, `Readable`, or a
+`Promise` of one of those:
+
 ```ts
-import { TemplateReplaceStream } from "template-replace-stream";
+import { TemplateReplaceStream, type StringSource } from "template-replace-stream";
 import fs from "node:fs";
 import path from "node:path";
 
-// create a map of variables to replace. This will replace "{{replace-me}}" with "really fast"
+// template.txt contains the text: Hello, this library is {{ replace-me }} :)
+const templateFilePath = path.join(import.meta.dirname, "template.txt");
+const outputFilePath = path.join(import.meta.dirname, "example.txt");
+
+// instead of a map, a resolver function can compute replacement values on demand.
+// It receives the variable name and may return a string, Buffer, Readable, or a Promise of those.
+function resolveVariable(variableName: string): StringSource {
+  console.log(`Resolving variable "${variableName}"`);
+  return "really fast";
+}
+
+// read the template, replace the variables while streaming, and write the result
+fs.createReadStream(templateFilePath)
+  .pipe(new TemplateReplaceStream(resolveVariable))
+  .pipe(fs.createWriteStream(outputFilePath))
+  .on("finish", () => console.log(`Wrote "Hello, this library is really fast :)" to example.txt`));
+
+```
+
+### One-shot Replacement without Streams
+
+If you just want the replaced result and don't need streaming, the static helpers
+`replaceStringAsync()` (resolves to a `string`) and `replaceAsync()` (resolves to a `Buffer`) wrap
+the whole pipeline in a single call. They hold the full output in memory, so avoid them for large
+inputs:
+
+```js
+import { TemplateReplaceStream } from "template-replace-stream";
+
+const template = "Hello, this library is {{ replace-me }} :)";
 const variables = new Map([["replace-me", "really fast"]]);
 
-// create the streams
-const readStream = fs.createReadStream(path.join(import.meta.dirname, "template.txt"));
-const writeStream = fs.createWriteStream(path.join(import.meta.dirname, "example.txt"));
-const templateReplaceStream = new TemplateReplaceStream(variables);
+// resolves to a string; the input may be a string, Buffer, or Readable
+console.log(await TemplateReplaceStream.replaceStringAsync(template, variables));
 
-// connect the streams and put the template replace stream in the middle
-readStream.pipe(templateReplaceStream).pipe(writeStream);
-writeStream.on("finish", () => console.log("Finished writing example.txt"));
+// same, but resolves to a Buffer (e.g. for binary templates)
+const buffer = await TemplateReplaceStream.replaceAsync(template, variables);
+console.log(buffer.toString());
 
 ```
 
@@ -97,7 +133,12 @@ import sloc from "sloc";
 import { Project, ts } from "ts-morph";
 
 const rootDir = path.join(import.meta.dirname, "..");
-const exampleFiles = ["javascript-example.cjs", "typescript-example.ts", "generate-readme.ts"];
+const exampleFiles = [
+  "javascript-example.js",
+  "typescript-example.ts",
+  "async-example.js",
+  "generate-readme.ts",
+];
 
 const outputFilePath = path.join(rootDir, "README.md");
 const sourceFilePath = path.join(rootDir, "index.ts");

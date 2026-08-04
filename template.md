@@ -37,14 +37,32 @@ returns a replacement value for a given template string.
 
 ### JavaScript
 
+This example replaces the template variables from a `Map`. Every occurrence of `{{ replace-me }}`
+in the template file is replaced with the value stored under the key `"replace-me"`:
+
 ```js
-{{ javascript-example.cjs }}
+{{ javascript-example.js }}
 ```
 
 ### TypeScript
 
+The same works with a resolver function instead of a `Map`. It is called with each variable name
+found in the template and returns the replacement value — a `string`, `Buffer`, `Readable`, or a
+`Promise` of one of those:
+
 ```ts
 {{ typescript-example.ts }}
+```
+
+### One-shot Replacement without Streams
+
+If you just want the replaced result and don't need streaming, the static helpers
+`replaceStringAsync()` (resolves to a `string`) and `replaceAsync()` (resolves to a `Buffer`) wrap
+the whole pipeline in a single call. They hold the full output in memory, so avoid them for large
+inputs:
+
+```js
+{{ async-example.js }}
 ```
 
 ### Advanced

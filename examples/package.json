@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "typescript": "node typescript-example.ts",
-    "javascript": "node javascript-example.cjs",
+    "javascript": "node javascript-example.js",
+    "async": "node async-example.js",
     "build:readme": "node generate-readme.ts",
     "postinstall": "npm link .."
   },
