@@ -108,7 +108,6 @@ const DEFAULT_OPTIONS: TemplateReplaceStreamOptions = {
   maxVariableNameLength: 100,
   startPattern: Buffer.from("{{", "ascii"),
   endPattern: Buffer.from("}}", "ascii"),
-  streamOptions: undefined,
 };
 
 /**
@@ -146,22 +145,15 @@ export class TemplateReplaceStream extends Transform {
    */
   constructor(variables: VariableResolver, options: Partial<TemplateReplaceStreamOptions> = {}) {
     const _options = { ...DEFAULT_OPTIONS, ...options };
+    let optionError: string | undefined;
     if (_options.maxVariableNameLength <= 0) {
-      throw new TemplateReplaceStreamError(
-        "The maximum variable name length must be greater than 0",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The maximum variable name length must be greater than 0";
     } else if (_options.startPattern.length === 0) {
-      throw new TemplateReplaceStreamError(
-        "The start pattern must not be empty",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The start pattern must not be empty";
     } else if (_options.endPattern.length === 0) {
-      throw new TemplateReplaceStreamError(
-        "The end pattern must not be empty",
-        "ERR_INVALID_OPTION"
-      );
+      optionError = "The end pattern must not be empty";
     }
+    if (optionError) throw new TemplateReplaceStreamError(optionError, "ERR_INVALID_OPTION");
 
     super(_options.streamOptions);
 
@@ -187,8 +179,7 @@ export class TemplateReplaceStream extends Transform {
   ) {
     const stream = new TemplateReplaceStream(variables, options);
     if (input instanceof Readable) return pipeline(input, stream, buffer);
-    stream.end(input);
-    return buffer(stream);
+    return buffer(stream.end(input));
   }
 
   /**
@@ -222,11 +213,7 @@ export class TemplateReplaceStream extends Transform {
       }
 
       // if there is text left from last iteration, prepend it to the chunk
-      if (this._stack.length === 0) {
-        this._stack = chunk;
-      } else {
-        this._stack = Buffer.concat([this._stack, chunk]);
-      }
+      this._stack = this._stack.length === 0 ? chunk : Buffer.concat([this._stack, chunk]);
 
       while (this._stackIndex < this._stack.length) {
         switch (this._state) {
@@ -242,10 +229,9 @@ export class TemplateReplaceStream extends Transform {
         }
       }
     } catch (e) {
-      callback(
+      return callback(
         e instanceof Error ? e : new TemplateReplaceStreamError(`${e}`, undefined, { cause: e })
       );
-      return;
     }
 
     callback();
@@ -448,12 +434,11 @@ export class TemplateReplaceStream extends Transform {
    * Gets the value of a variable from the map by its name.
    *
    * @param variableBuffer The buffer containing the variable name
-   * @returns The value of the variable as buffer or undefined if it was not found
+   * @returns The resolved value, or `undefined` if the variable has no replacement
    */
   private async getValueOfVariable(variableBuffer: Buffer) {
     const variableName = variableBuffer.toString().trim();
-    let value = this._resolveVariable(variableName);
-    if (value instanceof Promise) value = await value;
+    const value = await this._resolveVariable(variableName);
 
     if (value !== undefined) {
       if (this._options.log) console.debug(`Replacing variable "${variableName}"`);
@@ -467,8 +452,6 @@ export class TemplateReplaceStream extends Transform {
   /**
    * Writes the given string source to the output stream. If the source is a readable stream, it is
    * piped to the output stream. Otherwise, the source is written directly to the output stream.
-   *
-   * If the source is a promise, it is awaited before writing.
    *
    * @param stringSource The source to write to the output stream
    */
@@ -499,18 +482,15 @@ export class TemplateReplaceStream extends Transform {
   }
 
   /**
-   * Tears down cleanly when the transform is destroyed. Wakes a value-stream writer parked in
-   * {@link writeStreamToOutput} (otherwise its promise never resolves) and destroys any in-flight
-   * replacement {@link Readable} so its underlying resource (file descriptor, socket, …) is released
-   * rather than leaked.
+   * Tears down cleanly when the transform is destroyed: destroys an in-flight replacement
+   * {@link Readable} so its resource (file descriptor, socket, …) is not leaked, and wakes a
+   * value-stream writer parked in {@link writeStreamToOutput} (its promise would never resolve
+   * otherwise, as `_read` no longer fires).
    */
   _destroy(error: Error | null, callback: (error?: Error | null) => void) {
-    const resolve = this._readWaiter;
+    this._activeValueStream?.destroy(error ?? undefined);
+    this._readWaiter?.();
     this._readWaiter = null;
-    resolve?.();
-    const valueStream = this._activeValueStream;
-    this._activeValueStream = null;
-    if (valueStream && !valueStream.destroyed) valueStream.destroy(error ?? undefined);
     callback(error);
   }
 
@@ -521,9 +501,8 @@ export class TemplateReplaceStream extends Transform {
    * Node and awaits {@link writeStreamToOutput} inline, so a single resolver suffices.
    */
   _read(size: number) {
-    const resolve = this._readWaiter;
+    this._readWaiter?.();
     this._readWaiter = null;
-    resolve?.();
     super._read(size);
   }
 
