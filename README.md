@@ -1,6 +1,6 @@
 # template-replace-stream
 
-[![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml)
+[![GitHub Actions CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml)
 [![codecov](https://codecov.io/github/SoulKa/template-replace-stream/graph/badge.svg?token=JFCFRHKVL3)](https://codecov.io/github/SoulKa/template-replace-stream)
 [![npm version](https://badge.fury.io/js/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
 [![Downloads](https://img.shields.io/npm/dm/template-replace-stream.svg)](https://www.npmjs.com/package/template-replace-stream)
@@ -23,11 +23,12 @@ definitions. It requires Node.js `>=22`.
 
 ### Supported Node.js Versions
 
-The CI runs the test suite on every Node.js release line from 22 on:
+The CI runs the test suite on every Node.js release line from 22 on. Each badge reflects that
+version's own run:
 
 | 22.x | 23.x | 24.x | 25.x | 26.x |
 | --- | --- | --- | --- | --- |
-| [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) | [![CI](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/node.js.yml) |
+| [![22.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-22.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-22.yml) | [![23.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-23.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-23.yml) | [![24.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-24.yml) | [![25.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-25.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-25.yml) | [![26.x](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-26.yml/badge.svg?branch=main)](https://github.com/SoulKa/template-replace-stream/actions/workflows/ci-26.yml) |
 
 ## Usage
 

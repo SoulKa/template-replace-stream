@@ -1,0 +1,45 @@
+name: Test
+
+# Reusable workflow: builds the package and runs the test suite against a single Node.js version.
+# The per-version `ci-*.yml` workflows call this so each gets its own independent status badge.
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: The Node.js version to build and test against
+        required: true
+        type: string
+      coverage:
+        description: Collect coverage and upload it to Codecov (run this on one version only)
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build:all
+      - name: Run tests
+        if: ${{ !inputs.coverage }}
+        run: npm run test
+      - name: Run tests with coverage
+        if: ${{ inputs.coverage }}
+        run: npm run test:ci
+      - name: Upload coverage reports to Codecov
+        if: ${{ inputs.coverage }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

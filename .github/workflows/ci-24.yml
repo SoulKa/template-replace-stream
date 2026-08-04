@@ -1,0 +1,18 @@
+name: CI (Node.js 24.x)
+
+# 24.x is the active LTS and the canonical build: it also collects and uploads coverage.
+# The top-of-README "CI" and "codecov" badges point at this workflow.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+    with:
+      node-version: 24.x
+      coverage: true
+    secrets: inherit
